@@ -1,0 +1,8 @@
+$ ng-agent-docs --root <scratch>/lib
+
+--- stdout
+
+--- stderr
+<scratch>/lib/dist/package.json not found: build the library first (ng build), agent-docs/ goes into the built package.
+---
+exit code: 2

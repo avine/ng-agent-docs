@@ -1,0 +1,9 @@
+$ ng-agent-docs --root <scratch>/lib --out <scratch>/lib
+
+--- stdout
+
+--- stderr
+Refusing to use --out <scratch>/lib: it is the library folder, or contains it. It would be deleted.
+---
+exit code: 2
+lib/package.json: still there

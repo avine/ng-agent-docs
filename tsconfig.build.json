@@ -1,0 +1,14 @@
+{
+  // Builds the published command: dist/ng-agent-docs.mjs (bin in package.json).
+  // Node does not strip types from files under node_modules, so the package cannot ship the .mts itself.
+  "extends": "./tsconfig.json",
+  "include": ["ng-agent-docs.mts"],
+  "compilerOptions": {
+    "noEmit": false,
+    "allowImportingTsExtensions": false,
+    "rootDir": ".",
+    "outDir": "dist",
+    "target": "es2023",
+    "removeComments": false
+  }
+}

@@ -1,0 +1,21 @@
+{
+  // Type-checks the generator and the test scripts. Node runs the .mts files directly (≥ 22.18):
+  // no build is needed to work on them. The published build uses tsconfig.build.json.
+  "include": ["ng-agent-docs.mts", "test/*.mts", "test/fixtures/*.mts"],
+  "compilerOptions": {
+    "noEmit": true,
+    "module": "nodenext",
+    "target": "esnext",
+    "types": ["node"],
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "erasableSyntaxOnly": true,
+    "allowImportingTsExtensions": true,
+    "noUncheckedSideEffectImports": true,
+    "moduleDetection": "force",
+    "skipLibCheck": true
+  }
+}

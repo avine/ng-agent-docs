@@ -1,0 +1,35 @@
+{
+  "name": "ng-agent-docs",
+  "version": "0.1.0",
+  "description": "Generates compact, per-symbol API docs from an Angular library's JSDoc, so AI agents read only what they need instead of the .d.ts files.",
+  "keywords": ["angular", "ng-packagr", "documentation", "jsdoc", "ai", "agents", "llm"],
+  "type": "module",
+  "bin": {
+    "ng-agent-docs": "dist/ng-agent-docs.mjs"
+  },
+  "files": [
+    "dist/ng-agent-docs.mjs"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "node test/snapshot.mts",
+    "test:update": "node test/snapshot.mts --update",
+    "test:dist": "npm run build && node test/snapshot.mts --bin dist/ng-agent-docs.mjs",
+    "sync-fixtures": "node test/fixtures/sync-single-entry.mts",
+    "prepack": "npm run build"
+  },
+  "dependencies": {
+    "ts-morph": "^28.0.0"
+  },
+  "devDependencies": {
+    "@angular/common": "^22.2.3",
+    "@angular/core": "^22.2.3",
+    "@types/node": "^26.6.5",
+    "rxjs": "^7.8.2",
+    "typescript": "^6.0.3"
+  }
+}

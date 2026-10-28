@@ -1,0 +1,23 @@
+$ ng-agent-docs --root multi-entry --strict --out <out>
+
+--- stdout
+agent-docs: 50 symbols from 8 entry point(s) → <out>
+--- stderr
+
+14 warning(s):
+  - broken: entry file not found (broken/index.ts)
+  - @fixtures/multi-entry/utils: default export not documented, export it by name
+  - @fixtures/multi-entry/utils: export `missingHelper` could not be resolved, not documented
+  - FxButton.iconPosition: undocumented input
+  - FxBadge: missing JSDoc description
+  - @fixtures/multi-entry/core: namespace re-export `fxMath` (export * as fxMath) not documented, export its members by name
+  - @fixtures/multi-entry/core: export `FxInternals` (ModuleDeclaration) not supported, not documented
+  - FxInitialsPipe: missing JSDoc description
+  - FxTextField.hint: undocumented input
+  - FxSelect: `inputs` entry `missingProperty` has no matching class property (typo?)
+  - FxSelect.missingProperty: undocumented input
+  - FxStyledPanel: inputs and outputs inherited from NgStyle (@angular/common) are not documented
+  - FxHighlightCard: bindings declared by the mixin `withHighlight(CardBase)` are not documented
+  - FxPopover: host directive FxAnchor has no input `nope` to expose
+---
+exit code: 1

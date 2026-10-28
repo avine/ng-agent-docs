@@ -1,0 +1,11 @@
+$ ng-agent-docs --root <scratch>/lib
+
+--- stdout
+
+--- stderr
+<scratch>/dist/lib/package.json is the package @fixtures/other, not @fixtures/single-entry: check "dest" in <scratch>/lib/ng-package.json.
+---
+exit code: 2
+dist/lib/: 1 file(s)
+  package.json
+  agent-docs/api/: 0 page(s)

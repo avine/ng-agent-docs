@@ -1,0 +1,8 @@
+$ ng-agent-docs --root no-entry-point --out <out>
+
+--- stdout
+
+--- stderr
+No ng-package.json with an existing entry file found under <fixtures>/no-entry-point
+---
+exit code: 2

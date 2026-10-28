@@ -1,0 +1,21 @@
+$ ng-agent-docs --root single-entry --note "Legacy library: in new code, prefer @acme/ui (marked ⚠️)." --note "Second note." --out <out>
+
+--- stdout
+agent-docs: 50 symbols from 1 entry point(s) → <out>
+--- stderr
+
+12 warning(s):
+  - @fixtures/single-entry: export `missingHelper` could not be resolved, not documented
+  - FxButton.iconPosition: undocumented input
+  - FxBadge: missing JSDoc description
+  - @fixtures/single-entry: namespace re-export `fxMath` (export * as fxMath) not documented, export its members by name
+  - @fixtures/single-entry: export `FxInternals` (ModuleDeclaration) not supported, not documented
+  - FxInitialsPipe: missing JSDoc description
+  - FxTextField.hint: undocumented input
+  - FxSelect: `inputs` entry `missingProperty` has no matching class property (typo?)
+  - FxSelect.missingProperty: undocumented input
+  - FxStyledPanel: inputs and outputs inherited from NgStyle (@angular/common) are not documented
+  - FxHighlightCard: bindings declared by the mixin `withHighlight(CardBase)` are not documented
+  - FxPopover: host directive FxAnchor has no input `nope` to expose
+---
+exit code: 0

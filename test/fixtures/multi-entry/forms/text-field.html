@@ -1,0 +1,6 @@
+<label>{{ label }}</label>
+<ng-content select="[fxPrefix]"></ng-content>
+<input [value]="value" />
+<ng-content select="[fxSuffix]" />
+<!-- <ng-content select="[commented]" /> must be ignored: HTML comments are stripped before scanning -->
+<ng-content select="[fxHint]" />

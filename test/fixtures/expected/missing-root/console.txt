@@ -1,0 +1,8 @@
+$ ng-agent-docs
+
+--- stdout
+
+--- stderr
+Missing --root <library folder>, e.g. --root projects/my-lib
+---
+exit code: 2
