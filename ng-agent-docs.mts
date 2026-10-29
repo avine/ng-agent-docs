@@ -67,11 +67,14 @@ const STRICT = args.strict;
 const PKG_FILE = join(LIB_ROOT, 'package.json');
 if (!existsSync(PKG_FILE)) fail(`No package.json in ${LIB_ROOT}: --root must be the library folder.`);
 const PKG = JSON.parse(readFileSync(PKG_FILE, 'utf8')) as { name: string; version: string };
+const DEST_DIR = ngPackageDest(); // read even with --out: never scanned for entry points
 const OUT_DIR = args.out ? resolve(args.out) : join(builtPackageDir(), 'agent-docs'); // ⚠️ wiped on every run
 
-// Folders never scanned for ng-package.json files. OUT_DIR is skipped too, by path: an entry point
-// may have the same folder name.
-const SKIP_DIRS = new Set(['node_modules', 'dist']);
+// Folders never scanned for ng-package.json files. Absent from a library made by `ng generate library`,
+// but --root may be the repository itself (standalone ng-packagr). Skipped by name: node_modules.
+// By path: DEST_DIR and OUT_DIR, as an entry point may have the same folder name.
+const SKIP_DIRS = new Set(['node_modules']);
+const SKIP_PATHS = new Set([DEST_DIR, OUT_DIR]);
 
 // Files the OS adds to a folder opened in a file manager. Ignored by the --out safety check.
 const OS_FILES = new Set(['.DS_Store', 'Thumbs.db', 'desktop.ini']);
@@ -237,25 +240,35 @@ const docPath = (e: { name: string; ep: EntryPoint }) => ['api', e.ep.slug, `${e
 // Default output folder: inside the built package
 // =============================================================================
 /**
- * Folder of the built package, where agent-docs/ goes when --out is not given: the `dest` of the
- * library's ng-package.json, relative to that file (ng-packagr's default: `dist`).
+ * Folder of the built package: the `dest` of the library's ng-package.json, relative to that file
+ * (ng-packagr's default: `dist`). Undefined without an ng-package.json in the library folder.
+ * Nothing is checked: with --out, the library does not have to be built.
+ *
+ * Called while the config is read, before the helpers below are defined, like builtPackageDir():
+ * both only use node: imports and fail().
+ */
+function ngPackageDest(): string | undefined {
+  const ngPackage = join(LIB_ROOT, 'ng-package.json');
+  if (!existsSync(ngPackage)) return undefined;
+  const config = JSON.parse(readFileSync(ngPackage, 'utf8')) as { dest?: string };
+  return resolve(LIB_ROOT, config.dest ?? 'dist');
+}
+
+/**
+ * DEST_DIR, where agent-docs/ goes when --out is not given.
  *
  * ng-packagr empties `dest` at the start of every build, so the docs must be generated after it.
- * Exits with code 2 if the package has not been built, or if `dest` holds another package.
- *
- * Called while the config is read, before the helpers below are defined: it only uses node: imports and fail().
+ * Exits with code 2 if there is no ng-package.json, if the package has not been built, or if `dest`
+ * holds another package.
  */
 function builtPackageDir(): string {
-  const ngPackage = join(LIB_ROOT, 'ng-package.json');
-  if (!existsSync(ngPackage)) fail(`No ng-package.json in ${LIB_ROOT}: pass --out <dir>.`);
-  const config = JSON.parse(readFileSync(ngPackage, 'utf8')) as { dest?: string };
-  const dest = resolve(LIB_ROOT, config.dest ?? 'dist');
+  const dest = DEST_DIR ?? fail(`No ng-package.json in ${LIB_ROOT}: pass --out <dir>.`);
   const builtPkg = join(dest, 'package.json');
   if (!existsSync(builtPkg)) {
     fail(`${builtPkg} not found: build the library first (ng build), agent-docs/ goes into the built package.`);
   }
   const { name } = JSON.parse(readFileSync(builtPkg, 'utf8')) as { name?: string };
-  if (name !== PKG.name) fail(`${builtPkg} is the package ${name}, not ${PKG.name}: check "dest" in ${ngPackage}.`);
+  if (name !== PKG.name) fail(`${builtPkg} is the package ${name}, not ${PKG.name}: check "dest" in ${join(LIB_ROOT, 'ng-package.json')}.`);
   return dest;
 }
 
@@ -307,7 +320,7 @@ function findNgPackageDirs(dir: string): string[] {
   const found = existsSync(join(dir, 'ng-package.json')) ? [dir] : [];
   for (const d of readdirSync(dir, { withFileTypes: true })) {
     const child = join(dir, d.name);
-    if (d.isDirectory() && !d.name.startsWith('.') && !SKIP_DIRS.has(d.name) && child !== OUT_DIR) {
+    if (d.isDirectory() && !d.name.startsWith('.') && !SKIP_DIRS.has(d.name) && !SKIP_PATHS.has(child)) {
       found.push(...findNgPackageDirs(child));
     }
   }

@@ -189,6 +189,16 @@ const CASES: Case[] = [
     },
     check: (scratch) => generatedIn(scratch, 'dist/lib'),
   },
+  // `dest` inside the library and not named dist (standalone ng-packagr): never scanned for entry points,
+  // even with --out and the library not built. The decoy there would make it 2 entry points.
+  {
+    name: 'dest-inside-library',
+    args: ['--root', '{scratch}/lib'],
+    prepare: (scratch) => {
+      libWithDest(scratch, 'my-dist');
+      writeDecoy(join(scratch, 'lib', 'my-dist'));
+    },
+  },
 ];
 
 // Folders the generator must never scan. Created for the run only (git usually ignores
@@ -219,15 +229,20 @@ function walk(dir: string, base = dir): string[] {
     .sort();
 }
 
+/** An entry point the generator must never find: an ng-package.json and its entry file. */
+function writeDecoy(dir: string): void {
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(join(dir, 'ng-package.json'), '{ "lib": { "entryFile": "index.ts" } }\n');
+  writeFileSync(join(dir, 'index.ts'), '/** Decoy: must never be documented. */\nexport const DECOY = true;\n');
+}
+
 function createDecoys(): string[] {
   const created: string[] = [];
   for (const root of DECOY_ROOTS) {
     for (const d of DECOY_DIRS) {
       const dir = join(FIXTURES, root, d);
       if (existsSync(dir)) throw new Error(`${toPosix(relative(FIXTURES, dir))} already exists: remove it first`);
-      mkdirSync(dir, { recursive: true });
-      writeFileSync(join(dir, 'ng-package.json'), '{ "lib": { "entryFile": "index.ts" } }\n');
-      writeFileSync(join(dir, 'index.ts'), '/** Decoy: must never be documented. */\nexport const DECOY = true;\n');
+      writeDecoy(dir);
       created.push(join(FIXTURES, root, d.split('/')[0] ?? d));
     }
   }

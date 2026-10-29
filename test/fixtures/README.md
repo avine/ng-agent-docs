@@ -52,7 +52,9 @@ point the generator at copies in a temp folder, so a broken check can never dele
 Without `--out`, the docs go into the built package: `<dest>/agent-docs/`, `dest` coming from the
 library's `ng-package.json`. The `out-default*` cases build a fake package (just its `package.json`)
 next to a copy of `single-entry/`, and check that the docs land there, and that the generator refuses
-a library that is not built yet, or a `dest` holding another package.
+a library that is not built yet, or a `dest` holding another package. `dest-inside-library` puts
+`dest` inside the library, named `my-dist` (standalone ng-packagr layout), with a decoy entry point
+in it: the generator must not find it, even with `--out` and the library not built.
 
 ## Notes
 
