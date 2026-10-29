@@ -41,7 +41,7 @@ export const round = function (value: number, digits = 0): number {
 /** Does nothing. Arrow function in parentheses, with `satisfies`. */
 export const noop = (() => {}) satisfies () => void;
 
-/** Returns its argument. Arrow function with an `as` cast. */
+/** Returns its argument. Arrow function with an `as` cast: documented as a const of the asserted type. */
 export const identity = (<T>(value: T) => value) as <T>(value: T) => T;
 
 /** Tells whether a string is empty. Arrow function in parentheses only. */

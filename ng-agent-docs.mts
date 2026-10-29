@@ -1,41 +1,14 @@
 #!/usr/bin/env node
 /**
- * Generates agent-docs/: a library's public API, split into small files for AI agents.
- * Works with a single entry point (one public-api.ts) and with ng-packagr secondary entry points.
+ * Generates agent-docs/ from an Angular library's sources and JSDoc: its public API, split into small
+ * files for AI agents. Works with a single entry point and with ng-packagr secondary entry points.
  *
  *   agent-docs/index.md                    → compact catalog, grouped by entry point, one line per symbol
- *   agent-docs/api/<entry>/<Symbol>.md     → details of one symbol, read only when needed
- *                                            (primary entry point: agent-docs/api/<Symbol>.md)
+ *   agent-docs/api/<entry>/<Symbol>.md     → details of one symbol (primary entry point: api/<Symbol>.md)
  *
- * The output is generated, never edited, and written into the built package (dist/<lib>/agent-docs/),
- * so it ships with the package and is not committed. Run it right after the library build: ng-packagr
- * empties dist/<lib> at the start of every build.
- *
- * Usage, from the Angular workspace (installed as a dev dependency: `ng-agent-docs` is in node_modules/.bin):
+ * Run it right after the library build, the docs go into the built package:
  *   ng build my-lib && ng-agent-docs --root projects/my-lib --strict
- *   ng build legacy-lib && ng-agent-docs --root projects/legacy-lib --strict \
- *        --note "Legacy library: in new code, use @acme/ui whenever an equivalent exists (marked ⚠️)."
- *   --strict exits with code 1 if docs are incomplete: in the build script, an incomplete package is never published.
- *
- * Options:
- *   --root <dir>       library folder, the one containing ng-package.json and package.json (required)
- *   --tsconfig <file>  default: <root>/tsconfig.lib.json
- *   --out <dir>        default: <dest>/agent-docs, <dest> being the built package (the `dest` of <root>/ng-package.json,
- *                      ng-packagr's default: `dist`); refused with exit code 2 if the library is not built yet
- *                      ⚠️ deleted and fully regenerated on every run
- *                      (refused if it is or contains the library or the current folder, or holds other files)
- *   --note <text>      line added to the top of the index, for the agent (repeatable)
- *   --strict           fail on missing documentation
- *
- * Sources of truth:
- *   - Entry points: every ng-package.json under --root, and its `lib.entryFile`
- *   - Public API: whatever each entry file exports (internal code never leaks)
- *   - Angular metadata: selector, @Input()/@Output(), input()/model()/output(), inputs/outputs arrays, <ng-content>,
- *     the bindings inherited from base classes (generic bases resolved), and those exposed by hostDirectives
- *     (read from the .d.ts for a base class or a directive of another package)
- *   - Usage intent: JSDoc tags on the class
- *       @usage, @avoid, @replacedBy, @replaces, @category, @example, @deprecated
- *   - Entry point description: a JSDoc block with @packageDocumentation at the top of the entry file
+ * Options, JSDoc tags and exit codes: see README.md.
  */
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, posix, relative, resolve, sep } from 'node:path';
@@ -63,7 +36,7 @@ import {
 } from 'ts-morph';
 
 // =============================================================================
-// Config — from the command line (see the header for the options)
+// Config — from the command line (see README.md for the options)
 // =============================================================================
 // Usage error: exit code 2, so it is never mistaken for incomplete docs (exit code 1 in --strict mode).
 function fail(message: string): never {
@@ -130,7 +103,6 @@ interface Doc {
   avoid: string[]; // when NOT to use it, and what to use instead
   replacedBy?: string | undefined; // newer equivalent to prefer in new code (legacy library)
   replaces: string[]; // older elements this one replaces, e.g. mat-form-field (modern library)
-  category?: string | undefined;
   deprecated?: string | undefined;
   examples: string[];
 }
@@ -294,7 +266,7 @@ function builtPackageDir(): string {
  * OUT_DIR is deleted on every run, so a wrong --out (`.`, the library folder, `src/`) would delete
  * source code. Exits with code 2, before anything is read or deleted, unless OUT_DIR is safe to wipe:
  * it does not exist, is empty, or holds only the output of a previous run (index.md with GENERATED_MARKER,
- * and the .md pages under api/).
+ * and the .md pages under api/). The library folder is also checked by path, for a clearer message.
  */
 function checkOutDir(): void {
   const generatedBefore = () => {
@@ -319,13 +291,11 @@ function checkOutDir(): void {
   };
   const reason = isInside(LIB_ROOT, OUT_DIR)
     ? 'it is the library folder, or contains it'
-    : isInside(process.cwd(), OUT_DIR)
-      ? 'it is the current folder, or contains it'
-      : !existsSync(OUT_DIR)
-        ? undefined
-        : !statSync(OUT_DIR).isDirectory()
-          ? 'it is a file'
-          : contentReason();
+    : !existsSync(OUT_DIR)
+      ? undefined
+      : !statSync(OUT_DIR).isDirectory()
+        ? 'it is a file'
+        : contentReason();
   if (reason) fail(`Refusing to use --out ${OUT_DIR}: ${reason}. It would be deleted.`);
 }
 
@@ -380,7 +350,7 @@ function discoverEntryPoints(): EntryPoint[] {
 // =============================================================================
 // JSDoc parsing
 // =============================================================================
-// The tags readDoc() reads.
+// Our tags. `category` is not used: listed only so that, after text on a line, it is cut from the description.
 const DOC_TAGS = ['usage', 'avoid', 'replacedBy', 'replaces', 'category', 'example', 'deprecated'];
 
 // One of our tags after text on the same line, as in a one-line JSDoc: `/** Old. @deprecated Use FxNew. */`.
@@ -449,7 +419,6 @@ function readDoc(node: Node): Doc {
       case 'avoid': doc.avoid.push(text); break;
       case 'replacedBy': doc.replacedBy = text; break;
       case 'replaces': doc.replaces.push(text); break;
-      case 'category': doc.category = text; break;
       case 'deprecated': doc.deprecated = text || 'yes'; break;
       case 'example': doc.examples.push(text); break;
     }
@@ -508,11 +477,12 @@ function signature(name: string, fn: FunctionLike): string[] {
 
 /**
  * Function assigned to a const: `export const f = (...) => ...` or `export const f = function (...) {...}`.
- * Looks through parentheses, `as` and `satisfies`. Returns undefined for any other initializer.
+ * Looks through parentheses and `satisfies`, not `as`: consumers see the asserted type, so `f = (...) as Fn`
+ * is documented as `const f: Fn`. Returns undefined for any other initializer.
  */
 function functionInitializer(decl: VariableDeclaration): ArrowFunction | FunctionExpression | undefined {
   let init = decl.getInitializer();
-  while (init && (Node.isParenthesizedExpression(init) || Node.isAsExpression(init) || Node.isSatisfiesExpression(init))) {
+  while (init && (Node.isParenthesizedExpression(init) || Node.isSatisfiesExpression(init))) {
     init = init.getExpression();
   }
   return init && (Node.isArrowFunction(init) || Node.isFunctionExpression(init)) ? init : undefined;

@@ -1,9 +1,9 @@
-# identity (function)
+# identity (const)
 
 `import { identity } from '@fixtures/single-entry';`
 
-Returns its argument. Arrow function with an `as` cast.
+Returns its argument. Arrow function with an `as` cast: documented as a const of the asserted type.
 
 ```ts
-identity<T>(value: T): T
+const identity: <T>(value: T) => T;
 ```

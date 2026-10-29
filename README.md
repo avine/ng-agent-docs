@@ -58,8 +58,8 @@ built `package.json`.
 | `--strict` | Exit code 1 when documentation is missing (warnings). |
 
 The output folder is deleted and fully regenerated on every run, so removed symbols leave no stale
-page. The command refuses an `--out` that is or contains the library or the current folder, or that
-holds files it did not generate.
+page. The command refuses an `--out` that is or contains the library, or that holds files it did not
+generate.
 
 Exit codes: `0` done, `1` warnings with `--strict`, `2` usage error.
 
@@ -80,7 +80,6 @@ Everything comes from the library's sources:
 | `@avoid` | When not to use it, and what to use instead. One tag per case. |
 | `@replacedBy` | Newer equivalent to prefer in new code (legacy library). |
 | `@replaces` | Older elements this one replaces, e.g. `mat-form-field`. |
-| `@category` | Read, but not shown in the output yet. |
 | `@example` | Code example, fenced (without a fence: an HTML template). Can contain `@if`, `@for` and `@let` blocks. |
 | `@deprecated` | Deprecation message. |
 
