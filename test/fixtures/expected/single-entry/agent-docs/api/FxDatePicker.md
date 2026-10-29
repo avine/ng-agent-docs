@@ -14,6 +14,7 @@ Its template contains `${}`: no slot is detected (known limitation).
 - `[min]: Date | undefined` — Earliest selectable date.
 - `[label]: string` = `''` · inherited from FxFieldBase — Label of the field.
 - `[disabled]: boolean` = `false` · transform: booleanAttribute · inherited from FxFieldBase — Disables the field.
+- `[width]: string | number` · inherited from FxFieldBase — Width: a number of pixels or a CSS length. The getter always returns a CSS length: an inherited setter input keeps the setter's type.
 - `[placeholder]: string | undefined` · inherited from FxFieldBase — Text shown while the field is empty. Metadata input of the base class: inherited too.
 - `[hint]: string` **required** · from host directive FxTooltip — Text of the tooltip.
 

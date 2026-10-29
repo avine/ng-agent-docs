@@ -12,6 +12,7 @@ Generic: a subclass that sets `T` sees its own type on `value`.
 ## Inputs
 - `[label]: string` = `''` — Label of the field.
 - `[disabled]: boolean` = `false` · transform: booleanAttribute — Disables the field.
+- `[width]: string | number` — Width: a number of pixels or a CSS length. The getter always returns a CSS length: an inherited setter input keeps the setter's type.
 - `[placeholder]: string | undefined` — Text shown while the field is empty. Metadata input of the base class: inherited too.
 
 ## Two-way bindings (model)

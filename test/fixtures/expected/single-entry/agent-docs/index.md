@@ -13,19 +13,19 @@ Import each symbol from the entry point given in its section heading.
 - [FxBadge](api/FxBadge.md) `fx-badge`
 - [FxButton](api/FxButton.md) `fx-button` — Action button. (replaces mat-button, mat-flat-button)
 - [FxDatePicker](api/FxDatePicker.md) `fx-date-picker` — Date picker.
-- [FxDateRange](api/FxDateRange.md) `fx-date-range` — Date range picker. Its templateUrl points to a missing file: no slots, no crash.
-- [FxDateTimePicker](api/FxDateTimePicker.md) `fx-date-time-picker` — Date and time picker. Two levels of inheritance: FxDatePicker, then FxFieldBase<Date>.
+- [FxDateRange](api/FxDateRange.md) `fx-date-range` — Date range picker.
+- [FxDateTimePicker](api/FxDateTimePicker.md) `fx-date-time-picker` — Date and time picker.
 - [FxHighlightCard](api/FxHighlightCard.md) `fx-highlight-card` — Card built on a mixin: inherits `elevation` from CardBase, and gets a warning for the mixin's own bindings.
 - [FxIconButton](api/FxIconButton.md) `fx-icon-button` — Button that only shows an icon. (replaces mat-icon-button) → ⚠️ prefer `fx-button` with an `aria-label` (deprecated)
-- [FxPopover](api/FxPopover.md) `fx-popover` — Popover. Built from host directives only:
-- [FxSelect](api/FxSelect.md) `fx-select` — Select field. Its bindings are declared in the decorator metadata (older style), not with decorators.
+- [FxPopover](api/FxPopover.md) `fx-popover` — Popover.
+- [FxSelect](api/FxSelect.md) `fx-select` — Select field.
 - [FxStyledPanel](api/FxStyledPanel.md) `fx-styled-panel` — Panel that extends a directive from another package: its inherited bindings can't be read from a .d.ts.
-- [FxTextField](api/FxTextField.md) `fx-text-field` — Single-line text field. Decorator-based API, as in a legacy library.
+- [FxTextField](api/FxTextField.md) `fx-text-field` — Single-line text field.
 
 ### Directives
-- [FxAnchor](api/FxAnchor.md) `[fxAnchor]` — Positions an overlay next to its trigger. Meant to be used as a host directive.
+- [FxAnchor](api/FxAnchor.md) `[fxAnchor]` — Positions an overlay next to its trigger.
 - [FxButtonGroup](api/FxButtonGroup.md) `[fxButtonGroup]` — Groups buttons and manages a single selection.
-- [FxFieldBase](api/FxFieldBase.md) — Base class of the form fields. Holds the shared inputs.
+- [FxFieldBase](api/FxFieldBase.md) — Base class of the form fields.
 - [FxTooltip](api/FxTooltip.md) `[fxTooltip]` — Tooltip shown on hover or focus.
 
 ### Pipes
@@ -35,14 +35,14 @@ Import each symbol from the entry point given in its section heading.
 
 ### Services
 - [FxDialogService](api/FxDialogService.md) — Opens and tracks dialogs.
-- [FxLiveAnnouncer](api/FxLiveAnnouncer.md) — Announces messages to screen readers. Its public properties are constructor parameters.
-- [FxToastService](api/FxToastService.md) — Shows short messages that disappear on their own. Provided by the app: no `providedIn`.
+- [FxLiveAnnouncer](api/FxLiveAnnouncer.md) — Announces messages to screen readers.
+- [FxToastService](api/FxToastService.md) — Shows short messages that disappear on their own, at the bottom of the screen and above any open dialog.
 
 ### Types
 - [FxButtonVariant](api/FxButtonVariant.md) — Visual style of a button.
 - [FxCompareWith](api/FxCompareWith.md) — Comparison function used to match options.
 - [FxDefaults](api/FxDefaults.md) — Default values applied when an input is not set.
-- [FxDensity](api/FxDensity.md) — Spacing density. A const enum, inlined at compile time.
+- [FxDensity](api/FxDensity.md) — Spacing density.
 - [FxEntityId](api/FxEntityId.md) — Unique identifier of a persisted entity.
 - [FxId](api/FxId.md)
 - [FxOption](api/FxOption.md) — One choice in a select or a radio group.
@@ -53,20 +53,21 @@ Import each symbol from the entry point given in its section heading.
 
 ### Functions, constants and classes
 - [booleanAttribute](api/booleanAttribute.md) — Re-exported from `@angular/core`.
-- [capitalize](api/capitalize.md) — Capitalizes the first letter. Declared outside the folder of the entry point that exports it.
-- [clamp](api/clamp.md) — Clamps a value between two bounds. Arrow function with default parameters.
-- [firstDefined](api/firstDefined.md) — Returns the first defined value. Generic with a constraint and a default.
+- [capitalize](api/capitalize.md) — Capitalizes the first letter.
+- [clamp](api/clamp.md) — Clamps a value between two bounds.
+- [firstDefined](api/firstDefined.md) — Returns the first defined value.
 - [formatAmount](api/formatAmount.md) — Formats a number as an amount.
 - [FX_BREAKPOINTS](api/FX_BREAKPOINTS.md) — Breakpoints, in pixels.
 - [FX_DEFAULTS](api/FX_DEFAULTS.md) — Overrides the library defaults for a part of the app.
 - [FX_PAGE_SIZE](api/FX_PAGE_SIZE.md) — Default number of rows per page.
-- [fxCssClass](api/fxCssClass.md) — Builds a BEM-like CSS class. Exported by core/index.ts under another name.
-- [FxDialogRef](api/FxDialogRef.md) — Handle on an open dialog. Plain class, without an Angular decorator.
-- [FxOverlayBase](api/FxOverlayBase.md) — Base class of the overlays. Abstract class, without an Angular decorator.
-- [identity](api/identity.md) — Returns its argument. Arrow function with an `as` cast.
-- [isEmpty](api/isEmpty.md) — Tells whether a string is empty. Arrow function in parentheses only.
-- [isEven](api/isEven.md) — Tells whether a number is even. Typed on the variable: the alias name is not shown (known limitation).
-- [joinClasses](api/joinClasses.md) — Joins CSS classes, skipping falsy values. Optional parameter followed by a rest parameter.
-- [loadJson](api/loadJson.md) — Loads a JSON document. Async arrow function with a generic.
-- [noop](api/noop.md) — Does nothing. Arrow function in parentheses, with `satisfies`.
-- [round](api/round.md) — Rounds a number. Function expression.
+- [fxCssClass](api/fxCssClass.md) — Builds a BEM-like CSS class.
+- [FxDialogRef](api/FxDialogRef.md) — Handle on an open dialog.
+- [FxOverlayBase](api/FxOverlayBase.md) — Base class of the overlays.
+- [fxSize](api/fxSize-2.md) — Default size, as a value.
+- [identity](api/identity.md) — Returns its argument.
+- [isEmpty](api/isEmpty.md) — Tells whether a string is empty.
+- [isEven](api/isEven.md) — Tells whether a number is even.
+- [joinClasses](api/joinClasses.md) — Joins CSS classes, skipping falsy values.
+- [loadJson](api/loadJson.md) — Loads a JSON document.
+- [noop](api/noop.md) — Does nothing.
+- [round](api/round.md) — Rounds a number.

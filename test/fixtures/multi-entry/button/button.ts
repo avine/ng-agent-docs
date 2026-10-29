@@ -28,6 +28,14 @@ export type FxButtonVariant = 'filled' | 'outlined' | 'text';
  *   }
  *   Save
  * </fx-button>
+ * @example
+ * @let label = saving() ? 'Saving…' : 'Save';
+ * @if (canSave()) {
+ *   <fx-button (pressed)="save()">{{ label }}</fx-button>
+ * } @else {
+ *   <fx-button disabled>{{ label }}</fx-button>
+ * }
+ * <!-- No code fence, and control flow at column 0: still one example. -->
  */
 @Component({
   selector: 'fx-button',
@@ -71,6 +79,9 @@ export class FxButton implements OnInit {
    */
   readonly kind = input<FxButtonVariant>();
 
+  /** Old name of `loading`, deprecated in a one-line JSDoc. @deprecated Use `loading`. */
+  readonly busy = input(false);
+
   readonly iconPosition = input<'start' | 'end'>('start'); // no JSDoc: "undocumented input" warning
 
   // --- Models ---------------------------------------------------------------
@@ -106,6 +117,8 @@ export class FxButton implements OnInit {
    * @deprecated Use `pressed`.
    */
   readonly clicked = output<MouseEvent>();
+
+  readonly toggled = output<boolean>(); // no JSDoc: "undocumented output" warning
 
   // --- Methods --------------------------------------------------------------
   /** Gives focus to the button. Overloaded method: the JSDoc is on the first overload. */

@@ -1,4 +1,4 @@
-import { booleanAttribute, Directive, input, model } from '@angular/core';
+import { booleanAttribute, Directive, Input, input, model } from '@angular/core';
 
 /**
  * Base class of the form fields. Holds the shared inputs.
@@ -19,4 +19,17 @@ export abstract class FxFieldBase<T = unknown> {
 
   /** Text shown while the field is empty. Metadata input of the base class: inherited too. */
   placeholder?: string;
+
+  /**
+   * Width: a number of pixels or a CSS length. The getter always returns a CSS length: an inherited
+   * setter input keeps the setter's type.
+   */
+  @Input()
+  set width(value: string | number) {
+    this.cssWidth = typeof value === 'number' ? `${value}px` : value;
+  }
+  get width(): string {
+    return this.cssWidth;
+  }
+  private cssWidth = 'auto';
 }

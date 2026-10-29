@@ -41,6 +41,8 @@ In the workspace's `package.json`:
 ```
 
 `--strict` fails the build when the docs are incomplete, so an incomplete package is never published.
+Incomplete means a symbol without a description, or an undocumented input, output, or public member of a
+service or class. A component's undocumented public methods are not counted: they are template handlers.
 
 There is nothing to add to `ng-package.json`: the folder is written after ng-packagr, next to the
 built `package.json`.
@@ -79,7 +81,7 @@ Everything comes from the library's sources:
 | `@replacedBy` | Newer equivalent to prefer in new code (legacy library). |
 | `@replaces` | Older elements this one replaces, e.g. `mat-form-field`. |
 | `@category` | Read, but not shown in the output yet. |
-| `@example` | Code example, fenced. Can contain `@if` and `@for` blocks. |
+| `@example` | Code example, fenced (without a fence: an HTML template). Can contain `@if`, `@for` and `@let` blocks. |
 | `@deprecated` | Deprecation message. |
 
 An entry point gets a description from a `@packageDocumentation` block at the top of its entry file:

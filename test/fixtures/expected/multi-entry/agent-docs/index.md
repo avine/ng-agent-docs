@@ -26,7 +26,7 @@ Import each symbol from the entry point given in its section heading.
 ### Types
 - [FxCompareWith](api/core/FxCompareWith.md) — Comparison function used to match options.
 - [FxDefaults](api/core/FxDefaults.md) — Default values applied when an input is not set.
-- [FxDensity](api/core/FxDensity.md) — Spacing density. A const enum, inlined at compile time.
+- [FxDensity](api/core/FxDensity.md) — Spacing density.
 - [FxEntityId](api/core/FxEntityId.md) — Unique identifier of a persisted entity.
 - [FxId](api/core/FxId.md)
 - [FxOption](api/core/FxOption.md) — One choice in a select or a radio group.
@@ -37,20 +37,21 @@ Import each symbol from the entry point given in its section heading.
 
 ### Functions, constants and classes
 - [booleanAttribute](api/core/booleanAttribute.md) — Re-exported from `@angular/core`.
-- [clamp](api/core/clamp.md) — Clamps a value between two bounds. Arrow function with default parameters.
-- [firstDefined](api/core/firstDefined.md) — Returns the first defined value. Generic with a constraint and a default.
+- [clamp](api/core/clamp.md) — Clamps a value between two bounds.
+- [firstDefined](api/core/firstDefined.md) — Returns the first defined value.
 - [formatAmount](api/core/formatAmount.md) — Formats a number as an amount.
 - [FX_BREAKPOINTS](api/core/FX_BREAKPOINTS.md) — Breakpoints, in pixels.
 - [FX_DEFAULTS](api/core/FX_DEFAULTS.md) — Overrides the library defaults for a part of the app.
 - [FX_PAGE_SIZE](api/core/FX_PAGE_SIZE.md) — Default number of rows per page.
-- [fxCssClass](api/core/fxCssClass.md) — Builds a BEM-like CSS class. Exported by core/index.ts under another name.
-- [identity](api/core/identity.md) — Returns its argument. Arrow function with an `as` cast.
-- [isEmpty](api/core/isEmpty.md) — Tells whether a string is empty. Arrow function in parentheses only.
-- [isEven](api/core/isEven.md) — Tells whether a number is even. Typed on the variable: the alias name is not shown (known limitation).
-- [joinClasses](api/core/joinClasses.md) — Joins CSS classes, skipping falsy values. Optional parameter followed by a rest parameter.
-- [loadJson](api/core/loadJson.md) — Loads a JSON document. Async arrow function with a generic.
-- [noop](api/core/noop.md) — Does nothing. Arrow function in parentheses, with `satisfies`.
-- [round](api/core/round.md) — Rounds a number. Function expression.
+- [fxCssClass](api/core/fxCssClass.md) — Builds a BEM-like CSS class.
+- [fxSize](api/core/fxSize-2.md) — Default size, as a value.
+- [identity](api/core/identity.md) — Returns its argument.
+- [isEmpty](api/core/isEmpty.md) — Tells whether a string is empty.
+- [isEven](api/core/isEven.md) — Tells whether a number is even.
+- [joinClasses](api/core/joinClasses.md) — Joins CSS classes, skipping falsy values.
+- [loadJson](api/core/loadJson.md) — Loads a JSON document.
+- [noop](api/core/noop.md) — Does nothing.
+- [round](api/core/round.md) — Rounds a number.
 
 ## `@fixtures/multi-entry/format` — Formatting pipes.
 
@@ -61,40 +62,40 @@ Import each symbol from the entry point given in its section heading.
 ## `@fixtures/multi-entry/forms`
 
 ### Components
-- [FxSelect](api/forms/FxSelect.md) `fx-select` — Select field. Its bindings are declared in the decorator metadata (older style), not with decorators.
-- [FxTextField](api/forms/FxTextField.md) `fx-text-field` — Single-line text field. Decorator-based API, as in a legacy library.
+- [FxSelect](api/forms/FxSelect.md) `fx-select` — Select field.
+- [FxTextField](api/forms/FxTextField.md) `fx-text-field` — Single-line text field.
 
 ### Directives
-- [FxFieldBase](api/forms/FxFieldBase.md) — Base class of the form fields. Holds the shared inputs.
+- [FxFieldBase](api/forms/FxFieldBase.md) — Base class of the form fields.
 
-## `@fixtures/multi-entry/forms/date` — Date pickers. A secondary entry point nested in another one.
+## `@fixtures/multi-entry/forms/date` — Date pickers.
 
 ### Components
 - [FxDatePicker](api/forms/date/FxDatePicker.md) `fx-date-picker` — Date picker.
-- [FxDateRange](api/forms/date/FxDateRange.md) `fx-date-range` — Date range picker. Its templateUrl points to a missing file: no slots, no crash.
-- [FxDateTimePicker](api/forms/date/FxDateTimePicker.md) `fx-date-time-picker` — Date and time picker. Two levels of inheritance: FxDatePicker, then FxFieldBase<Date>.
+- [FxDateRange](api/forms/date/FxDateRange.md) `fx-date-range` — Date range picker.
+- [FxDateTimePicker](api/forms/date/FxDateTimePicker.md) `fx-date-time-picker` — Date and time picker.
 
 ## `@fixtures/multi-entry/overlay` — Dialogs, tooltips and toasts.
 
 ### Components
 - [FxHighlightCard](api/overlay/FxHighlightCard.md) `fx-highlight-card` — Card built on a mixin: inherits `elevation` from CardBase, and gets a warning for the mixin's own bindings.
-- [FxPopover](api/overlay/FxPopover.md) `fx-popover` — Popover. Built from host directives only:
+- [FxPopover](api/overlay/FxPopover.md) `fx-popover` — Popover.
 - [FxStyledPanel](api/overlay/FxStyledPanel.md) `fx-styled-panel` — Panel that extends a directive from another package: its inherited bindings can't be read from a .d.ts.
 
 ### Directives
-- [FxAnchor](api/overlay/FxAnchor.md) `[fxAnchor]` — Positions an overlay next to its trigger. Meant to be used as a host directive.
+- [FxAnchor](api/overlay/FxAnchor.md) `[fxAnchor]` — Positions an overlay next to its trigger.
 - [FxTooltip](api/overlay/FxTooltip.md) `[fxTooltip]` — Tooltip shown on hover or focus.
 
 ### Services
 - [FxDialogService](api/overlay/FxDialogService.md) — Opens and tracks dialogs.
-- [FxLiveAnnouncer](api/overlay/FxLiveAnnouncer.md) — Announces messages to screen readers. Its public properties are constructor parameters.
-- [FxToastService](api/overlay/FxToastService.md) — Shows short messages that disappear on their own. Provided by the app: no `providedIn`.
+- [FxLiveAnnouncer](api/overlay/FxLiveAnnouncer.md) — Announces messages to screen readers.
+- [FxToastService](api/overlay/FxToastService.md) — Shows short messages that disappear on their own, at the bottom of the screen and above any open dialog.
 
 ### Functions, constants and classes
-- [FxDialogRef](api/overlay/FxDialogRef.md) — Handle on an open dialog. Plain class, without an Angular decorator.
-- [FxOverlayBase](api/overlay/FxOverlayBase.md) — Base class of the overlays. Abstract class, without an Angular decorator.
+- [FxDialogRef](api/overlay/FxDialogRef.md) — Handle on an open dialog.
+- [FxOverlayBase](api/overlay/FxOverlayBase.md) — Base class of the overlays.
 
-## `@fixtures/multi-entry/utils` — Small helpers. Uses ng-packagr's default entry file: src/public_api.ts.
+## `@fixtures/multi-entry/utils` — Small helpers.
 
 ### Functions, constants and classes
-- [capitalize](api/utils/capitalize.md) — Capitalizes the first letter. Declared outside the folder of the entry point that exports it.
+- [capitalize](api/utils/capitalize.md) — Capitalizes the first letter.

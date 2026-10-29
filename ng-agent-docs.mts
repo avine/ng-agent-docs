@@ -56,6 +56,7 @@ import {
   PropertyDeclaration,
   Scope,
   SetAccessorDeclaration,
+  SyntaxKind,
   Type,
   TypeFormatFlags,
   VariableDeclaration,
@@ -143,6 +144,7 @@ interface Member {
 interface Context {
   ep: EntryPoint; // the entry point that owns the symbol
   alsoFrom: { importPath: string; name: string }[]; // its other exports: by other entry points, or renamed
+  page: string; // its page, relative to OUT_DIR
 }
 
 /** One documented symbol, ready to be written to disk and listed in the index. */
@@ -151,6 +153,7 @@ interface Entry {
   kind: Kind;
   doc: Doc;
   ep: EntryPoint;
+  page: string; // relative to OUT_DIR
   selector?: string | undefined;
   pipeName?: string | undefined;
   markdown: string;
@@ -190,7 +193,20 @@ const code = (s: string) => {
   return longestRun ? `${fence} ${text} ${fence}` : `${fence}${text}${fence}`;
 };
 
-const firstLine = (s = '') => (s.split('\n')[0] ?? '').trim();
+// First paragraph of a description, on one line, for the one-line lists of a page. It can be wrapped over
+// several lines, and ends at a blank line, a list, a heading, a quote, a table or a code fence.
+const firstParagraph = (s = '') => {
+  const lines = s.trim().split('\n');
+  const end = lines.findIndex((l, i) => i > 0 && /^\s*($|[-*+>#|]|\d+\.\s|```)/.test(l));
+  return oneLine(lines.slice(0, end < 0 ? undefined : end).join(' '));
+};
+
+// First sentence of a description, for the index: it ends at `.`, `!` or `?` followed by a capital letter
+// (`e.g. this` does not end it), or with the first paragraph.
+const summary = (s = '') => {
+  const paragraph = firstParagraph(s);
+  return /^.*?[.!?](?=\s+\p{Lu})/u.exec(paragraph)?.[0] ?? paragraph;
+};
 const codeBlock = (lang: string, s: string) => '```' + lang + '\n' + s.trim() + '\n```';
 const toPosix = (p: string) => p.split(sep).join('/');
 // `dir` itself, or anything below it. Works for a root folder too (`/` or `C:\`).
@@ -221,6 +237,7 @@ const isPublic = (m: PropertyDeclaration | MethodDeclaration | GetAccessorDeclar
   m.getScope() === Scope.Public && !m.isStatic() && !m.getName().startsWith('#');
 
 // Markdown file of a symbol, relative to OUT_DIR: api/<entry slug>/<Symbol>.md
+// (unless its name differs from another one only by case: see `pageOf`).
 const docPath = (e: { name: string; ep: EntryPoint }) => ['api', e.ep.slug, `${e.name}.md`].filter(Boolean).join('/');
 
 // =============================================================================
@@ -349,31 +366,58 @@ function discoverEntryPoints(): EntryPoint[] {
 // =============================================================================
 // JSDoc parsing
 // =============================================================================
+// The tags readDoc() reads.
+const DOC_TAGS = ['usage', 'avoid', 'replacedBy', 'replaces', 'category', 'example', 'deprecated'];
+
+// One of our tags after text on the same line, as in a one-line JSDoc: `/** Old. @deprecated Use FxNew. */`.
+const INLINE_TAG = new RegExp(`\\s+(?=@(?:${DOC_TAGS.join('|')})\\b)`, 'g');
+
+// Angular control flow at the start of a line, in an @example without a code fence: content, not a tag.
+const CONTROL_FLOW = /^@(?:(?:if|for|switch|case|default|defer|placeholder|loading|error|empty)\s*[({]|else\b|let\s)/;
+
+// `Old. @deprecated Use FxNew.` → ['Old.', '@deprecated Use FxNew.']. Not at the start of the line
+// (an indented tag is content), nor in inline code.
+const splitAtInlineTags = (line: string) => {
+  const parts: string[] = [];
+  let start = 0;
+  for (const m of line.matchAll(INLINE_TAG)) {
+    const before = line.slice(0, m.index);
+    if (!before.trim() || (before.match(/`/g)?.length ?? 0) % 2) continue;
+    parts.push(line.slice(start, m.index));
+    start = m.index + m[0].length;
+  }
+  return [...parts, line.slice(start)];
+};
+
 /**
  * Splits the raw text of a JSDoc block into its description and its tags.
  *
- * We don't use TypeScript's own tag parsing: it starts a new tag on any line beginning with `@`,
- * which cuts an @example at its first `@if` or `@for`. Here a tag starts only on a line that
- * begins with `@` at column 0, outside a ``` code fence. Indented lines are always content.
+ * We don't use TypeScript's own tag parsing: it starts a new tag at any `@` after a space, which cuts
+ * an @example at its first `@if` or `@for`, and a description at `@Input()`. Here a tag starts only on
+ * a line that begins with `@` at column 0, outside a ``` code fence, and not with Angular control flow
+ * in an @example. Indented lines are always content. Only our own tags can follow text on a line.
  */
 function parseJsDoc(text: string) {
   const description: string[] = [];
   const tags: { name: string; text: string }[] = [];
   let inFence = false;
-  for (const line of text.split('\n')) {
-    const tag = inFence ? null : /^@(\w+)\s?(.*)$/.exec(line);
-    const last = tags.at(-1);
-    if (tag) tags.push({ name: tag[1] ?? '', text: tag[2] ?? '' });
-    else if (last) last.text += '\n' + line;
-    else description.push(line);
-    if (line.trimStart().startsWith('```')) inFence = !inFence;
+  for (const raw of text.split('\n')) {
+    for (const line of inFence ? [raw] : splitAtInlineTags(raw)) {
+      const last = tags.at(-1);
+      const content = inFence || (last?.name === 'example' && CONTROL_FLOW.test(line));
+      const tag = content ? null : /^@(\w+)\s?(.*)$/.exec(line);
+      if (tag) tags.push({ name: tag[1] ?? '', text: tag[2] ?? '' });
+      else if (last) last.text += '\n' + line;
+      else description.push(line);
+      if (line.trimStart().startsWith('```')) inFence = !inFence;
+    }
   }
   return { description: description.join('\n').trim(), tags: tags.map((t) => ({ ...t, text: t.text.trim() })) };
 }
 
 /**
  * Reads the JSDoc block closest to a node and extracts the description and our custom tags.
- * To support a new tag: add a field to `Doc`, a `case` here, and render it in `header()`.
+ * To support a new tag: add a field to `Doc`, its name to DOC_TAGS, a `case` here, and render it in `header()`.
  */
 function readDoc(node: Node): Doc {
   const doc: Doc = { usage: [], avoid: [], replaces: [], examples: [] };
@@ -620,7 +664,14 @@ function allBindings(cls: ClassDeclaration, meta: ObjectLiteralExpression | unde
       for (const m of list) {
         if (seen.has(m.prop)) continue; // redeclared lower in the chain
         seen.add(m.prop);
-        const t = cls.getType().getProperty(m.prop)?.getTypeAtLocation(cls);
+        // Read through the child, so the base's type parameters are resolved (`value: T` → `value: Date`),
+        // except for a setter that does not use them: it accepts its parameter's type, already in `m.type`,
+        // while the child only gives the getter's.
+        const setterType = base?.getSetAccessor(m.prop)?.getParameters()[0]?.getTypeNode();
+        const typeParams = new Set(base?.getTypeParameters().map((p) => p.getName()));
+        const keepOwn =
+          setterType && !setterType.getDescendantsOfKind(SyntaxKind.Identifier).some((id) => typeParams.has(id.getText()));
+        const t = keepOwn ? undefined : cls.getType().getProperty(m.prop)?.getTypeAtLocation(cls);
         const type = t ? typeText(m.wrapped ? unwrap(t) : t, cls) : m.type;
         groups[i]?.push({ ...m, type, inheritedFrom: m.inheritedFrom ?? base?.getName() });
       }
@@ -996,13 +1047,12 @@ function describeClass(name: string, cls: ClassDeclaration, ctx: Context): Entry
     lines.push(...memberList('Outputs', 'output', outputs));
     lines.push(...memberList('Two-way bindings (model)', 'model', models, 'Each one also works as `[name]` + `(nameChange)`.'));
     if (host.directives.length) {
-      const page = docPath({ name, ep: ctx.ep });
       lines.push(
         '',
         '## Host directives',
         'Applied to every instance. Only the bindings listed here can be used in templates.',
         '',
-        ...host.directives.map((d) => hostDirectiveLine(d, page)),
+        ...host.directives.map((d) => hostDirectiveLine(d, ctx.page)),
       );
     }
     if (kind === 'component') {
@@ -1013,23 +1063,23 @@ function describeClass(name: string, cls: ClassDeclaration, ctx: Context): Entry
     const methods = cls
       .getMethods()
       .filter((m) => isPublic(m) && !LIFECYCLE.test(m.getName()) && readFnDoc(m).description)
-      .flatMap((m) => signature(m.getName(), m).map((s) => `- \`${s}\` — ${firstLine(readFnDoc(m).description)}`));
+      .flatMap((m) => signature(m.getName(), m).map((s) => `- ${code(s)} — ${firstParagraph(readFnDoc(m).description)}`));
     if (methods.length) lines.push('', '## Public methods (via viewChild or exportAs)', ...methods);
 
-    // Documentation completeness checks (fail the run in --strict mode)
-    if (!doc.description) warnings.push(`${name}: missing JSDoc description`);
-    inputs
-      .concat(models)
-      // An inherited or exposed one is reported on the class that declares it.
-      .filter((m) => !m.description && !m.inheritedFrom && !m.fromHostDirective)
-      .forEach((m) => warnings.push(`${name}.${m.name}: undocumented input`));
+    // Documentation completeness checks (fail the run in --strict mode). The class description is
+    // checked with the page. An inherited or exposed binding is reported on the class that declares it.
+    const undocumented = (list: Member[], what: string) =>
+      list
+        .filter((m) => !m.description && !m.inheritedFrom && !m.fromHostDirective)
+        .forEach((m) => warnings.push(`${name}.${m.name}: undocumented ${what}`));
+    undocumented(inputs.concat(models), 'input');
+    undocumented(outputs, 'output');
   } else if (kind === 'pipe') {
     // --- Pipes: template name and transform() signature
     pipeName = str(propOf(meta, 'name'));
     lines.push(...header(name, kind, doc, ctx, [`Template usage: \`{{ value | ${pipeName} }}\``]));
     const transform = cls.getMethod('transform');
     if (transform) lines.push('', '## Signature', codeBlock('ts', signature('transform', transform).join('\n')));
-    if (!doc.description) warnings.push(`${name}: missing JSDoc description`);
   } else {
     // --- Services and plain classes: all public properties and methods
     const providedIn = propOf(meta, 'providedIn')?.getText();
@@ -1038,27 +1088,29 @@ function describeClass(name: string, cls: ClassDeclaration, ctx: Context): Entry
       const readonly = Node.isPropertyDeclaration(p) && p.isReadonly() ? 'readonly ' : '';
       const type = Node.isGetAccessorDeclaration(p) ? p.getReturnType() : p.getType();
       const d = readDoc(p).description;
-      return `- \`${readonly}${p.getName()}: ${typeText(type, p)}\`${d ? ` — ${firstLine(d)}` : ''}`;
+      if (!d) warnings.push(`${name}.${p.getName()}: undocumented property`);
+      return `- ${code(`${readonly}${p.getName()}: ${typeText(type, p)}`)}${d ? ` — ${firstParagraph(d)}` : ''}`;
     });
     // Public parameter properties: `constructor(public readonly http: HttpClient)` declares a property too.
     // `readonly` alone also makes a public one.
     const ctorProps = (cls.getConstructors()[0]?.getParameters() ?? [])
       .filter((p) => p.isParameterProperty() && p.getScope() === Scope.Public)
-      .map((p) => `- \`${p.isReadonly() ? 'readonly ' : ''}${p.getName()}: ${typeText(p.getType(), p)}\` — constructor parameter`);
+      .map((p) => `- ${code(`${p.isReadonly() ? 'readonly ' : ''}${p.getName()}: ${typeText(p.getType(), p)}`)} — constructor parameter`);
     props.push(...ctorProps);
     const methods = cls
       .getMethods()
       .filter((m) => isPublic(m) && !LIFECYCLE.test(m.getName()))
       .flatMap((m) => {
         const d = readFnDoc(m).description;
-        return signature(m.getName(), m).map((s) => `- \`${s}\`${d ? ` — ${firstLine(d)}` : ''}`);
+        if (!d) warnings.push(`${name}.${m.getName()}: undocumented method`);
+        return signature(m.getName(), m).map((s) => `- ${code(s)}${d ? ` — ${firstParagraph(d)}` : ''}`);
       });
     if (props.length) lines.push('', '## Properties', ...props);
     if (methods.length) lines.push('', '## Methods', ...methods);
   }
 
   lines.push(...examples(doc));
-  return { name, kind, doc, ep: ctx.ep, selector, pipeName, markdown: lines.join('\n') };
+  return { name, kind, doc, ep: ctx.ep, page: ctx.page, selector, pipeName, markdown: lines.join('\n') };
 }
 
 /** Package that declares a file of node_modules: `.../node_modules/@angular/core/index.d.ts` → `@angular/core`. */
@@ -1093,7 +1145,7 @@ function describeExternal(name: string, decl: Node, ctx: Context): Entry | undef
   const pkg = packageOf(decl.getSourceFile().getFilePath());
   const doc: Doc = { usage: [], avoid: [], replaces: [], examples: [], description: `Re-exported from \`${pkg}\`.` };
   const markdown = [...header(name, kind, doc, ctx), '', `See the documentation of \`${pkg}\` for its API.`].join('\n');
-  return { name, kind, doc, ep: ctx.ep, markdown };
+  return { name, kind, doc, ep: ctx.ep, page: ctx.page, markdown };
 }
 
 /** Any exported declaration. Non-class symbols are shown as their source or signature in a code block. */
@@ -1117,7 +1169,7 @@ function describe(name: string, decl: Node, ctx: Context): Entry | undefined {
   } else return undefined; // other kinds of exports (namespaces, etc.) are ignored
 
   const markdown = [...header(name, kind, doc, ctx), '', codeBlock('ts', body), ...examples(doc)].join('\n');
-  return { name, kind, doc, ep: ctx.ep, markdown };
+  return { name, kind, doc, ep: ctx.ep, page: ctx.page, markdown };
 }
 
 // =============================================================================
@@ -1171,9 +1223,8 @@ for (const ep of entryPoints) {
 // first one that exports it. The page takes the name the owner exports it under, the declaration's own
 // name if it is one of them (`export { A, A as B }` → A); its other exports are listed on the page.
 // Computed for all of them first, so a page can link to another one.
-const owners = new Map<Node, { name: string; ctx: Context }>();
-for (const [decl, exports] of exported) {
-  const file = decl.getSourceFile().getFilePath();
+const owned = [...exported].map(([decl, exports]) => {
+  const file = resolve(decl.getSourceFile().getFilePath()); // ts-morph paths use `/`, ep.dir the OS separator
   const eps = [...new Set(exports.map((x) => x.ep))];
   const owner =
     eps.filter((ep) => isInside(file, ep.dir)).sort((a, b) => b.dir.length - a.dir.length)[0] ?? eps[0]!; // eps is never empty
@@ -1183,10 +1234,24 @@ for (const [decl, exports] of exported) {
   const alsoFrom = exports
     .filter((x) => x.ep !== owner || x.name !== name)
     .map((x) => ({ importPath: x.ep.importPath, name: x.name }));
-  owners.set(decl, { name, ctx: { ep: owner, alsoFrom } });
+  return { decl, name, ep: owner, alsoFrom };
+});
+
+// Page of each symbol, relative to OUT_DIR. Names that differ only by case (`FxSize`, `fxSize`) would
+// share one file on a case-insensitive file system (macOS, Windows), where the package may be unpacked:
+// the first in code point order keeps `<Name>.md`, the next ones get `<Name>-2.md`, `-3`… (no name has a `-`).
+const pageOf = new Map<string, string>(); // docPath → page
+const sharing = new Map<string, number>(); // lowercased docPath → number of pages using it so far
+for (const path of [...new Set(owned.map(docPath))].sort()) {
+  const n = (sharing.get(path.toLowerCase()) ?? 0) + 1;
+  sharing.set(path.toLowerCase(), n);
+  pageOf.set(path, n === 1 ? path : path.replace(/\.md$/, `-${n}.md`));
 }
-// Page of each declaration, relative to OUT_DIR (read by hostDirectiveLine).
-const pages = new Map<Node, string>([...owners].map(([decl, { name, ctx }]) => [decl, docPath({ name, ep: ctx.ep })]));
+const owners = new Map<Node, { name: string; ctx: Context }>(
+  owned.map(({ decl, name, ep, alsoFrom }) => [decl, { name, ctx: { ep, alsoFrom, page: pageOf.get(docPath({ name, ep }))! } }]),
+);
+// Page of each declaration (read by hostDirectiveLine).
+const pages = new Map<Node, string>([...owners].map(([decl, { ctx }]) => [decl, ctx.page]));
 
 const byFile = new Map<string, Entry[]>(); // doc file path → described declarations
 for (const [decl, { name, ctx }] of owners) {
@@ -1200,15 +1265,16 @@ for (const [decl, { name, ctx }] of owners) {
     );
     continue;
   }
-  const path = docPath(entry);
-  byFile.set(path, [...(byFile.get(path) ?? []), entry]);
+  byFile.set(entry.page, [...(byFile.get(entry.page) ?? []), entry]);
 }
 
 // One name can cover several declarations (e.g. an interface and a const): merge them into one file.
-const entries: Entry[] = [...byFile.values()].map((list) => ({
-  ...list[0]!, // each list has at least one entry
-  markdown: list.map((e) => e.markdown).join('\n\n---\n\n'),
-}));
+const entries: Entry[] = [...byFile.values()].map((list) => {
+  const first = list[0]!; // each list has at least one entry
+  // Documentation completeness check (fails the run in --strict mode): one description per page is enough.
+  if (!list.some((e) => e.doc.description)) warnings.push(`${first.name}: missing JSDoc description`);
+  return { ...first, markdown: list.map((e) => e.markdown).join('\n\n---\n\n') };
+});
 entries.sort((a, b) => byName(a.name, b.name));
 
 // =============================================================================
@@ -1218,7 +1284,7 @@ entries.sort((a, b) => byName(a.name, b.name));
 rmSync(OUT_DIR, { recursive: true, force: true });
 mkdirSync(OUT_DIR, { recursive: true }); // for index.md, even when no symbol gets a page
 for (const e of entries) {
-  const file = join(OUT_DIR, docPath(e));
+  const file = join(OUT_DIR, e.page);
   mkdirSync(dirname(file), { recursive: true });
   writeFileSync(file, e.markdown + '\n');
 }
@@ -1235,12 +1301,12 @@ const GROUPS: [Kind[], string][] = [
   [['function', 'const', 'class'], 'Functions, constants and classes'],
 ];
 
-// Index line: link, selector or pipe name, first line of the description, replacement hints.
+// Index line: link, selector or pipe name, first sentence of the description, replacement hints.
 const indexLine = (e: Entry) =>
-  `- [${e.name}](${docPath(e)})` +
+  `- [${e.name}](${e.page})` +
   (e.selector ? ` \`${e.selector}\`` : '') +
   (e.pipeName ? ` \`| ${e.pipeName}\`` : '') +
-  (e.doc.description ? ` — ${firstLine(e.doc.description)}` : '') +
+  (e.doc.description ? ` — ${summary(e.doc.description)}` : '') +
   (e.doc.replaces.length ? ` (replaces ${e.doc.replaces.join(', ')})` : '') +
   (e.doc.replacedBy ? ` → ⚠️ prefer ${e.doc.replacedBy}` : '') +
   (e.doc.deprecated ? ' (deprecated)' : '');
@@ -1250,7 +1316,7 @@ const entryPointSection = (ep: EntryPoint) => {
   if (!own.length) return []; // e.g. an empty primary entry point
   return [
     '',
-    `## \`${ep.importPath}\`${ep.description ? ` — ${firstLine(ep.description)}` : ''}`,
+    `## \`${ep.importPath}\`${ep.description ? ` — ${summary(ep.description)}` : ''}`,
     ...GROUPS.flatMap(([kinds, title]) => {
       const list = own.filter((e) => kinds.includes(e.kind));
       return list.length ? ['', `### ${title}`, ...list.map(indexLine)] : [];

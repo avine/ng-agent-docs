@@ -27,6 +27,7 @@ Second paragraph: shown on the symbol page, not in the index.
 - `[tabindex]: number` = `0` · transform: numberAttribute — Position in the tab order. Alias + transform.
 - `[tracking]: { category: string; action: string; }` = `{ category: 'button', action: 'click', }` — Extra data sent to analytics. Multi-line default value, collapsed to one line.
 - `[kind]: FxButtonVariant | undefined` ⚠️ deprecated: Use `variant`. Removed in v3. — Old name of `variant`.
+- `[busy]: boolean` = `false` ⚠️ deprecated: Use `loading`. — Old name of `loading`, deprecated in a one-line JSDoc.
 - `[iconPosition]: "start" | "end"` = `'start'`
 
 ## Outputs
@@ -36,6 +37,7 @@ Second paragraph: shown on the symbol page, not in the index.
 - `(hovered): boolean` — Emitted when the pointer enters or leaves. Built from an observable.
 - `(fxHoverChange): boolean` — Same as `hovered`, aliased.
 - `(clicked): MouseEvent` ⚠️ deprecated: Use `pressed`. — Old click event.
+- `(toggled): boolean`
 
 ## Two-way bindings (model)
 Each one also works as `[name]` + `(nameChange)`.
@@ -67,4 +69,13 @@ Each one also works as `[name]` + `(nameChange)`.
   }
   Save
 </fx-button>
+```
+```html
+@let label = saving() ? 'Saving…' : 'Save';
+@if (canSave()) {
+  <fx-button (pressed)="save()">{{ label }}</fx-button>
+} @else {
+  <fx-button disabled>{{ label }}</fx-button>
+}
+<!-- No code fence, and control flow at column 0: still one example. -->
 ```

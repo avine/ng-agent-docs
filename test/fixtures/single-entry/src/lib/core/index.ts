@@ -1,7 +1,7 @@
 /**
  * Shared types, tokens and helpers used by every other entry point.
  *
- * Second paragraph: shown nowhere, the index only keeps the first line.
+ * Second paragraph: shown nowhere, the index only keeps the first sentence.
  * @packageDocumentation
  */
 export * from './types';
