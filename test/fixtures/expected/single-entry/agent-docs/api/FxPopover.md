@@ -16,13 +16,13 @@ Popover. Built from host directives only:
 - `[gap]: number` = `8` · from host directive FxAnchor — Distance to the trigger, in pixels.
 - `[panelStyle]: { [klass: string]: any; } | null | undefined` · from host directive NgStyle
 
+## Outputs
+- `(resized): "s" | "m" | "l"` · from host directive FxAnchor — Size of the overlay.
+
 ## Two-way bindings (model)
 Each one also works as `[name]` + `(nameChange)`.
 
 - `[(expanded)]: boolean` = `false` · from host directive FxAnchor — Whether the overlay is open.
-
-## Outputs
-- `(resized): "s" | "m" | "l"` · from host directive FxAnchor — Size of the overlay.
 
 ## Host directives
 Applied to every instance. Only the bindings listed here can be used in templates.

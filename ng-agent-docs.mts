@@ -972,8 +972,8 @@ function describeClass(name: string, cls: ClassDeclaration, ctx: Context): Entry
       : 'No selector: base class, extend it instead of using it in a template.';
     lines.push(...header(name, kind, doc, ctx, [selectorLine]));
     lines.push(...memberList('Inputs', 'input', inputs));
-    lines.push(...memberList('Two-way bindings (model)', 'model', models, 'Each one also works as `[name]` + `(nameChange)`.'));
     lines.push(...memberList('Outputs', 'output', outputs));
+    lines.push(...memberList('Two-way bindings (model)', 'model', models, 'Each one also works as `[name]` + `(nameChange)`.'));
     if (host.directives.length) {
       const page = docPath({ name, ep: ctx.ep });
       lines.push(
@@ -1235,7 +1235,7 @@ const index = [
   GENERATED_MARKER,
   '',
   ...NOTES,
-  'Read this index, then only the relevant `api/.../<Symbol>.md` file. Do not read the `.d.ts` files.',
+  'Read this index, then only the relevant `api/.../<Symbol>.md` file.',
   'Import each symbol from the entry point given in its section heading.',
   ...entryPoints.flatMap(entryPointSection),
 ].join('\n');

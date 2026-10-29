@@ -29,13 +29,6 @@ Second paragraph: shown on the symbol page, not in the index.
 - `[kind]: FxButtonVariant | undefined` ⚠️ deprecated: Use `variant`. Removed in v3. — Old name of `variant`.
 - `[iconPosition]: "start" | "end"` = `'start'`
 
-## Two-way bindings (model)
-Each one also works as `[name]` + `(nameChange)`.
-
-- `[(active)]: boolean` = `false` — Pressed state of a toggle button.
-- `[(value)]: string | undefined` — Value of the button inside a group. No default value.
-- `[(selected)]: boolean` **required** — Selected state. Required two-way binding.
-
 ## Outputs
 - `(pressed): MouseEvent` — Emitted on click, unless the button is loading.
 - `(focused): void` — Emitted when the button gets focus.
@@ -43,6 +36,13 @@ Each one also works as `[name]` + `(nameChange)`.
 - `(hovered): boolean` — Emitted when the pointer enters or leaves. Built from an observable.
 - `(fxHoverChange): boolean` — Same as `hovered`, aliased.
 - `(clicked): MouseEvent` ⚠️ deprecated: Use `pressed`. — Old click event.
+
+## Two-way bindings (model)
+Each one also works as `[name]` + `(nameChange)`.
+
+- `[(active)]: boolean` = `false` — Pressed state of a toggle button.
+- `[(value)]: string | undefined` — Value of the button inside a group. No default value.
+- `[(selected)]: boolean` **required** — Selected state. Required two-way binding.
 
 ## Content projection (ng-content)
 - `[fxButtonIcon]`

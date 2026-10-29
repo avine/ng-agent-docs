@@ -17,13 +17,13 @@ Its template contains `${}`: no slot is detected (known limitation).
 - `[placeholder]: string | undefined` · inherited from FxFieldBase — Text shown while the field is empty. Metadata input of the base class: inherited too.
 - `[hint]: string` **required** · from host directive FxTooltip — Text of the tooltip.
 
+## Outputs
+- `(tooltipToggle): boolean` · from host directive FxTooltip — Emitted when the tooltip opens or closes.
+
 ## Two-way bindings (model)
 Each one also works as `[name]` + `(nameChange)`.
 
 - `[(value)]: Date | undefined` · inherited from FxFieldBase — Value of the field. Its type comes from the subclass.
-
-## Outputs
-- `(tooltipToggle): boolean` · from host directive FxTooltip — Emitted when the tooltip opens or closes.
 
 ## Host directives
 Applied to every instance. Only the bindings listed here can be used in templates.

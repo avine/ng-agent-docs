@@ -4,7 +4,7 @@
 
 Legacy library: in new code, prefer @acme/ui (marked ⚠️).
 Second note.
-Read this index, then only the relevant `api/.../<Symbol>.md` file. Do not read the `.d.ts` files.
+Read this index, then only the relevant `api/.../<Symbol>.md` file.
 Import each symbol from the entry point given in its section heading.
 
 ## `@fixtures/single-entry` — Same sources as the multi-entry fixture, with every symbol exported from this single file.
