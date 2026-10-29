@@ -488,6 +488,13 @@ function signature(name: string, fn: FunctionLike): string[] {
   });
 }
 
+/** Call signatures of a function type, its type arguments applied: `FxCheck<number>` → `isOdd(value: number): boolean`. */
+const callSignatures = (name: string, t: Type, at: Node) =>
+  t.getCallSignatures().map((s) => {
+    const checker = at.getProject().getTypeChecker().compilerObject;
+    return name + checker.signatureToString(s.compilerSignature, at.compilerNode, TYPE_FORMAT);
+  });
+
 /**
  * Function assigned to a const: `export const f = (...) => ...` or `export const f = function (...) {...}`.
  * Looks through parentheses and `satisfies`, not `as`: consumers see the asserted type, so `f = (...) as Fn`
@@ -1128,6 +1135,17 @@ function describeExternal(name: string, kind: Kind, decl: Node, ctx: Context): E
   return { name, kind, doc, ep: ctx.ep, page: ctx.page, markdown };
 }
 
+/**
+ * Named type the consumer cannot look up: an alias or interface of the library that has no page.
+ * `const isOdd: FxCheck<number>` alone does not tell how to call `isOdd`.
+ */
+function isHidden(t: Type): boolean {
+  const decls = (t.getAliasSymbol() ?? t.getSymbol())
+    ?.getDeclarations()
+    .filter((d) => Node.isTypeAliasDeclaration(d) || Node.isInterfaceDeclaration(d)) ?? []; // not an inline type
+  return decls.length > 0 && !decls.some((d) => owners.has(d) || d.getSourceFile().isInNodeModules());
+}
+
 /** Any exported declaration. Non-class symbols are shown as their source or signature in a code block. */
 function describe(name: string, decl: Node, ctx: Context): Entry | undefined {
   const kind = kindOf(decl);
@@ -1141,8 +1159,10 @@ function describe(name: string, decl: Node, ctx: Context): Entry | undefined {
   else if (Node.isVariableDeclaration(decl)) {
     // A function typed on its variable (`authGuard: CanActivateFn = ...`) keeps that type, as in the .d.ts:
     // the alias name tells what the function is for, and the arrow's inferred signature can be narrower.
-    const fn = decl.getTypeNode() ? undefined : functionInitializer(decl);
-    body = fn ? signature(name, fn).join('\n') : `const ${name}: ${typeText(decl.getType(), decl)};`;
+    const fn = functionInitializer(decl);
+    const typed = !!decl.getTypeNode();
+    body = fn && !typed ? signature(name, fn).join('\n') : `const ${name}: ${typeText(decl.getType(), decl)};`;
+    if (fn && typed && isHidden(decl.getType())) body += '\n' + callSignatures(name, decl.getType(), decl).join('\n');
   } else body = decl.getText(); // interface, type alias, enum
 
   const markdown = [...header(name, kind, doc, ctx), '', codeBlock('ts', body), ...examples(doc)].join('\n');

@@ -1,7 +1,7 @@
 $ ng-agent-docs --root <scratch>/lib --out <out>
 
 --- stdout
-agent-docs: 52 symbols from 1 entry point(s) → <out>
+agent-docs: 54 symbols from 1 entry point(s) → <out>
 --- stderr
 
 16 warning(s):

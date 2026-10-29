@@ -5,3 +5,6 @@ export function buildCssClass(block: string, modifier?: string): string {
 
 /** Exported by this file but by no entry point: must never be documented. */
 export function internalHelper(): void {}
+
+/** Test on a value. Exported by this file but by no entry point: no page. */
+export type FxCheck<T> = (value: T) => boolean;

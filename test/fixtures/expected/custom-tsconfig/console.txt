@@ -1,7 +1,7 @@
 $ ng-agent-docs --root single-entry --tsconfig single-entry/tsconfig.alt.json --out <out>
 
 --- stdout
-agent-docs: 52 symbols from 1 entry point(s) → <out>
+agent-docs: 54 symbols from 1 entry point(s) → <out>
 --- stderr
 
 16 warning(s):

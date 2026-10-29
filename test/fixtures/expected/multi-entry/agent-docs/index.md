@@ -48,8 +48,10 @@ Import each symbol from the entry point given in its section heading.
 - [identity](api/core/identity.md) — Returns its argument.
 - [isEmpty](api/core/isEmpty.md) — Tells whether a string is empty.
 - [isEven](api/core/isEven.md) — Tells whether a number is even.
+- [isOdd](api/core/isOdd.md) — Tells whether a number is odd.
 - [joinClasses](api/core/joinClasses.md) — Joins CSS classes, skipping falsy values.
 - [loadJson](api/core/loadJson.md) — Loads a JSON document.
+- [negate](api/core/negate.md) — Negates a number.
 - [noop](api/core/noop.md) — Does nothing.
 - [round](api/core/round.md) — Rounds a number.
 

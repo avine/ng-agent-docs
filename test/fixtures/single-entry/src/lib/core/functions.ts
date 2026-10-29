@@ -1,3 +1,5 @@
+import type { FxCheck } from './internal';
+
 /** Predicate on a value. */
 export type FxPredicate<T> = (value: T) => boolean;
 
@@ -49,3 +51,9 @@ export const isEmpty = ((value: string): boolean => value.length === 0);
 
 /** Tells whether a number is even. Typed on the variable: documented with that type, as in the .d.ts. */
 export const isEven: FxPredicate<number> = (n) => n % 2 === 0;
+
+/** Tells whether a number is odd. Typed with an alias that has no page: its signature is shown too. */
+export const isOdd: FxCheck<number> = (n) => n % 2 !== 0;
+
+/** Negates a number. Typed with an inline function type: already readable, no signature added. */
+export const negate: (n: number) => number = (n) => -n;

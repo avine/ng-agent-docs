@@ -1,7 +1,7 @@
 $ ng-agent-docs --root multi-entry --out <scratch>/button
 
 --- stdout
-agent-docs: 52 symbols from 8 entry point(s) → <scratch>/button
+agent-docs: 54 symbols from 8 entry point(s) → <scratch>/button
 --- stderr
 
 18 warning(s):
