@@ -363,8 +363,8 @@ function discoverEntryPoints(): EntryPoint[] {
 // =============================================================================
 // JSDoc parsing
 // =============================================================================
-// Our tags. `category` is not used: listed only so that, after text on a line, it is cut from the description.
-const DOC_TAGS = ['usage', 'avoid', 'replacedBy', 'replaces', 'category', 'example', 'deprecated'];
+// Our tags.
+const DOC_TAGS = ['usage', 'avoid', 'replacedBy', 'replaces', 'example', 'deprecated'];
 
 // One of our tags after text on the same line, as in a one-line JSDoc: `/** Old. @deprecated Use FxNew. */`.
 const INLINE_TAG = new RegExp(`\\s+(?=@(?:${DOC_TAGS.join('|')})\\b)`, 'g');
