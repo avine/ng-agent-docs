@@ -47,8 +47,8 @@ Each one also works as `[name]` + `(nameChange)`.
 - `[(selected)]: boolean` **required** — Selected state. Required two-way binding.
 
 ## Content projection (ng-content)
-- `[fxButtonIcon]`
 - `default`
+- `[fxButtonIcon]`
 - `[fxButtonSuffix]`
 
 ## Public methods (via viewChild or exportAs)

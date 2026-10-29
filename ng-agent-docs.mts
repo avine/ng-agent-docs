@@ -911,7 +911,7 @@ function fullBindings(cls: ClassDeclaration, stack = new Set<ClassDeclaration>()
 
 /**
  * Lists the content projection slots of a component by scanning its template for <ng-content>.
- * Reads the inline `template` or the `templateUrl` file. A slot without `select` is reported as "default".
+ * Reads the inline `template` or the `templateUrl` file. A slot without `select` is reported as "default", listed first.
  */
 function slots(cls: ClassDeclaration, meta?: ObjectLiteralExpression): string[] {
   let html = str(propOf(meta, 'template'));
@@ -925,7 +925,8 @@ function slots(cls: ClassDeclaration, meta?: ObjectLiteralExpression): string[] 
   const found = [...html.matchAll(/<ng-content\b([^>]*)>/g)].map(
     (m) => /select\s*=\s*["']([^"']+)["']/.exec(m[1] ?? '')?.[1] ?? 'default',
   );
-  return [...new Set(found)];
+  // "default" first, the named slots keep their template order (sort is stable)
+  return [...new Set(found)].sort((a, b) => Number(b === 'default') - Number(a === 'default'));
 }
 
 // =============================================================================
