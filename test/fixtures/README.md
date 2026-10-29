@@ -30,9 +30,8 @@ A difference anywhere else means the generator depends on the library layout.
 
 The snapshot records the current behavior. Fixing one of these shows up as an expected diff.
 
-- Inputs and outputs inherited from a base class of another package are not listed, with a warning
-  (`FxStyledPanel` extends `NgStyle`), and so are those declared by a mixin (`FxHighlightCard`); the
-  base class passed to the mixin is still read. Inherited public methods are not listed either.
+- Inputs and outputs declared by a mixin are not listed, with a warning (`FxHighlightCard`); the base
+  class passed to the mixin is still read. Inherited public methods are not listed either.
 - A template with `${}` substitutions is not scanned for slots (`FxDatePicker`).
 - An inherited setter input shows its setter's type (`width`), except when that type uses the base
   class's type parameters: then it shows the getter's type, resolved for the subclass (no fixture).

@@ -15,6 +15,8 @@ function withHighlight<TBase extends Constructor>(Base: TBase) {
 class CardBase {
   /** Shadow depth, from 0 to 5. Declared by the base passed to the mixin: documented as inherited. */
   readonly elevation = input(1);
+
+  readonly outlined = input(false); // no JSDoc, and CardBase has no page: reported on FxHighlightCard
 }
 
 /** Card built on a mixin: inherits `elevation` from CardBase, and gets a warning for the mixin's own bindings. */

@@ -32,7 +32,7 @@
  *   - Public API: whatever each entry file exports (internal code never leaks)
  *   - Angular metadata: selector, @Input()/@Output(), input()/model()/output(), inputs/outputs arrays, <ng-content>,
  *     the bindings inherited from base classes (generic bases resolved), and those exposed by hostDirectives
- *     (read from the .d.ts for a directive of another package)
+ *     (read from the .d.ts for a base class or a directive of another package)
  *   - Usage intent: JSDoc tags on the class
  *       @usage, @avoid, @replacedBy, @replaces, @category, @example, @deprecated
  *   - Entry point description: a JSDoc block with @packageDocumentation at the top of the entry file
@@ -65,24 +65,35 @@ import {
 // =============================================================================
 // Config — from the command line (see the header for the options)
 // =============================================================================
-const { values: args } = parseArgs({
-  options: {
-    root: { type: 'string' },
-    tsconfig: { type: 'string' },
-    out: { type: 'string' },
-    note: { type: 'string', multiple: true, default: [] },
-    strict: { type: 'boolean', default: false },
-  },
-});
-if (!args.root) {
-  console.error('Missing --root <library folder>, e.g. --root projects/my-lib');
+// Usage error: exit code 2, so it is never mistaken for incomplete docs (exit code 1 in --strict mode).
+function fail(message: string): never {
+  console.error(message);
   process.exit(2);
 }
+
+const { values: args } = (() => {
+  try {
+    return parseArgs({
+      options: {
+        root: { type: 'string' },
+        tsconfig: { type: 'string' },
+        out: { type: 'string' },
+        note: { type: 'string', multiple: true, default: [] },
+        strict: { type: 'boolean', default: false },
+      },
+    });
+  } catch (e) {
+    return fail((e as Error).message); // unknown option, missing value…
+  }
+})();
+if (!args.root) fail('Missing --root <library folder>, e.g. --root projects/my-lib');
 const LIB_ROOT = resolve(args.root);
 const TSCONFIG = resolve(args.tsconfig ?? join(LIB_ROOT, 'tsconfig.lib.json')); // needed so types resolve
 const NOTES = args.note;
 const STRICT = args.strict;
-const PKG = JSON.parse(readFileSync(join(LIB_ROOT, 'package.json'), 'utf8')) as { name: string; version: string };
+const PKG_FILE = join(LIB_ROOT, 'package.json');
+if (!existsSync(PKG_FILE)) fail(`No package.json in ${LIB_ROOT}: --root must be the library folder.`);
+const PKG = JSON.parse(readFileSync(PKG_FILE, 'utf8')) as { name: string; version: string };
 const OUT_DIR = args.out ? resolve(args.out) : join(builtPackageDir(), 'agent-docs'); // ⚠️ wiped on every run
 
 // Folders never scanned for ng-package.json files. OUT_DIR is skipped too, by path: an entry point
@@ -133,11 +144,18 @@ interface Member {
   transform?: string | undefined; // e.g. booleanAttribute: the input also accepts what it converts
   description?: string | undefined;
   deprecated?: string | undefined;
-  inheritedFrom?: string | undefined; // base class that declares it, for an inherited binding
-  fromHostDirective?: string | undefined; // host directive that provides it, for an exposed binding
+  inheritedFrom?: ClassDeclaration | undefined; // base class that declares it, for an inherited binding
+  fromHostDirective?: ClassDeclaration | undefined; // host directive that provides it, for an exposed binding
   // Internal, not rendered: used to merge and re-type inherited bindings.
   prop: string; // class member name (the template name may be an alias)
   wrapped: boolean; // `type` was unwrapped from InputSignal<T>, ModelSignal<T>, EventEmitter<T>…
+}
+
+/** Every template binding of a class, by kind. */
+interface Bindings {
+  inputs: Member[];
+  models: Member[];
+  outputs: Member[];
 }
 
 /** Where a symbol is documented, and how it is imported. */
@@ -232,6 +250,9 @@ const metadata = (d?: Decorator) => {
   return arg && Node.isObjectLiteralExpression(arg) ? arg : undefined;
 };
 
+// The Angular decorator of a class (@Component, @Directive, @Pipe, @Injectable), if any.
+const ngDecorator = (cls: ClassDeclaration) => cls.getDecorators().find((d) => d.getName() in NG_DECORATORS);
+
 // Public, non-static, not #private. Used to filter members of services and classes.
 const isPublic = (m: PropertyDeclaration | MethodDeclaration | GetAccessorDeclaration) =>
   m.getScope() === Scope.Public && !m.isStatic() && !m.getName().startsWith('#');
@@ -250,13 +271,9 @@ const docPath = (e: { name: string; ep: EntryPoint }) => ['api', e.ep.slug, `${e
  * ng-packagr empties `dest` at the start of every build, so the docs must be generated after it.
  * Exits with code 2 if the package has not been built, or if `dest` holds another package.
  *
- * Called while the config is read, before the helpers below are defined: it only uses node: imports.
+ * Called while the config is read, before the helpers below are defined: it only uses node: imports and fail().
  */
 function builtPackageDir(): string {
-  const fail = (message: string): never => {
-    console.error(message);
-    process.exit(2);
-  };
   const ngPackage = join(LIB_ROOT, 'ng-package.json');
   if (!existsSync(ngPackage)) fail(`No ng-package.json in ${LIB_ROOT}: pass --out <dir>.`);
   const config = JSON.parse(readFileSync(ngPackage, 'utf8')) as { dest?: string };
@@ -309,10 +326,7 @@ function checkOutDir(): void {
         : !statSync(OUT_DIR).isDirectory()
           ? 'it is a file'
           : contentReason();
-  if (reason) {
-    console.error(`Refusing to use --out ${OUT_DIR}: ${reason}. It would be deleted.`);
-    process.exit(2);
-  }
+  if (reason) fail(`Refusing to use --out ${OUT_DIR}: ${reason}. It would be deleted.`);
 }
 
 // =============================================================================
@@ -453,7 +467,6 @@ function readDoc(node: Node): Doc {
 function unwrap(t: Type): Type {
   return t.getTypeArguments()[0] ?? t.getAliasTypeArguments()[0] ?? t;
 }
-const innerType = (p: PropertyDeclaration) => typeText(unwrap(p.getType()), p);
 
 type FunctionLike = MethodDeclaration | FunctionDeclaration | ArrowFunction | FunctionExpression;
 
@@ -508,6 +521,30 @@ function functionInitializer(decl: VariableDeclaration): ArrowFunction | Functio
 // =============================================================================
 // Angular bindings: inputs, models, outputs
 // =============================================================================
+// Class member a binding is declared on: a property, or a setter or getter.
+const memberOf = (cls: ClassDeclaration, prop: string) =>
+  cls.getProperty(prop) ?? cls.getSetAccessor(prop) ?? cls.getGetAccessor(prop);
+
+/**
+ * Type of a binding, read from its class member: a setter accepts its parameter's type, a getter gives
+ * its return type, a property its own type, unwrapped (InputSignal<T>, EventEmitter<T> → T) when `wrapped`.
+ */
+function memberType(member: Node | undefined, wrapped: boolean): string {
+  if (!member) return 'unknown';
+  if (Node.isSetAccessorDeclaration(member)) {
+    return typeText(member.getParameters()[0]?.getType() ?? member.getType(), member);
+  }
+  if (Node.isGetAccessorDeclaration(member)) return typeText(member.getReturnType(), member);
+  if (Node.isPropertyDeclaration(member)) return typeText(wrapped ? unwrap(member.getType()) : member.getType(), member);
+  return 'unknown';
+}
+
+// Description and deprecation of a binding, from the JSDoc of its class member (none if it is missing).
+const docOf = (member: Node | undefined) => {
+  const doc = member && readDoc(member);
+  return { description: doc?.description, deprecated: doc?.deprecated };
+};
+
 /**
  * Detects a signal-based binding: `x = input(...)`, `input.required(...)`, `model(...)`, `output(...)`.
  * Returns the function name, whether it is `.required`, and the call node (to read its arguments).
@@ -537,33 +574,22 @@ function decoratorInput(
 ): Omit<Member, 'description' | 'deprecated'> {
   const arg = d.getArguments()[0];
   const opts = arg && Node.isObjectLiteralExpression(arg) ? arg : undefined;
-  const transform = propOf(opts, 'transform')?.getText();
-  // Setter: the accepted type is the parameter's. Getter: its return type. Property: its own type.
-  const valueType = Node.isSetAccessorDeclaration(m)
-    ? (m.getParameters()[0]?.getType() ?? m.getType())
-    : Node.isGetAccessorDeclaration(m)
-      ? m.getReturnType()
-      : m.getType();
   return {
     name: str(arg) ?? str(propOf(opts, 'alias')) ?? m.getName(),
     prop: m.getName(),
     wrapped: false,
-    type: typeText(valueType, m),
-    transform,
+    type: memberType(m, false),
+    transform: propOf(opts, 'transform')?.getText(),
     required: propOf(opts, 'required')?.getText() === 'true',
     default: Node.isPropertyDeclaration(m) ? m.getInitializer()?.getText() : undefined,
   };
 }
 
 /** Collects every template binding of a component or directive: signal-based, decorators, and metadata arrays. */
-function bindings(cls: ClassDeclaration, meta: ObjectLiteralExpression | undefined) {
+function bindings(cls: ClassDeclaration, meta: ObjectLiteralExpression | undefined): Bindings {
   const inputs: Member[] = [];
   const models: Member[] = [];
   const outputs: Member[] = [];
-  const docOf = (n: Node) => {
-    const d = readDoc(n);
-    return { description: d.description, deprecated: d.deprecated };
-  };
 
   for (const p of cls.getProperties()) {
     // 1. Signal-based: input() / input.required() / model() / output() / outputFromObservable()
@@ -578,7 +604,7 @@ function bindings(cls: ClassDeclaration, meta: ObjectLiteralExpression | undefin
         name: str(propOf(opts, 'alias')) ?? p.getName(),
         prop: p.getName(),
         wrapped: true,
-        type: innerType(p),
+        type: memberType(p, true),
         transform,
         required: sig.required,
         default: hasDefault ? first.getText() : undefined,
@@ -602,7 +628,7 @@ function bindings(cls: ClassDeclaration, meta: ObjectLiteralExpression | undefin
         name: str(outputDecorator.getArguments()[0]) ?? p.getName(),
         prop: p.getName(),
         wrapped: true,
-        type: innerType(p),
+        type: memberType(p, true),
         required: false,
         ...docOf(p),
       });
@@ -627,10 +653,10 @@ function bindings(cls: ClassDeclaration, meta: ObjectLiteralExpression | undefin
  *
  * Inherited types are read through the child's own type, so a generic base is resolved:
  * `class FxDatePicker extends FxFieldBase<Date>` shows `value: Date`, not `value: T`.
- * A base class from another package (.d.ts, no decorators left) or one that can't be resolved
- * (`extends mixin(Base)`) stops the walk with a warning: its bindings are not documented.
+ * A base class from another package is read from its .d.ts (see externalBindings). One that can't
+ * be resolved stops the walk with a warning: its bindings are not documented.
  */
-function allBindings(cls: ClassDeclaration, meta: ObjectLiteralExpression | undefined) {
+function allBindings(cls: ClassDeclaration, meta: ObjectLiteralExpression | undefined): Bindings {
   const result = bindings(cls, meta);
   const groups = [result.inputs, result.models, result.outputs] as const;
   const seen = new Set(groups.flatMap((list) => list.map((m) => m.prop)));
@@ -653,13 +679,9 @@ function allBindings(cls: ClassDeclaration, meta: ObjectLiteralExpression | unde
   while (base && !visited.has(base)) {
     visited.add(base);
     checkMixin(base);
-    if (base.getSourceFile().isInNodeModules()) {
-      const pkg = packageOf(base.getSourceFile().getFilePath());
-      warnings.push(`${cls.getName()}: inputs and outputs inherited from ${base.getName()} (${pkg}) are not documented`);
-      break;
-    }
-    const baseDecorator = base.getDecorators().find((d) => d.getName() in NG_DECORATORS);
-    const inherited = bindings(base, metadata(baseDecorator));
+    const inherited = base.getSourceFile().isInNodeModules()
+      ? (externalBindings(base) ?? { inputs: [], models: [], outputs: [] }) // a plain class has none
+      : bindings(base, metadata(ngDecorator(base)));
     [inherited.inputs, inherited.models, inherited.outputs].forEach((list, i) => {
       for (const m of list) {
         if (seen.has(m.prop)) continue; // redeclared lower in the chain
@@ -673,27 +695,12 @@ function allBindings(cls: ClassDeclaration, meta: ObjectLiteralExpression | unde
           setterType && !setterType.getDescendantsOfKind(SyntaxKind.Identifier).some((id) => typeParams.has(id.getText()));
         const t = keepOwn ? undefined : cls.getType().getProperty(m.prop)?.getTypeAtLocation(cls);
         const type = t ? typeText(m.wrapped ? unwrap(t) : t, cls) : m.type;
-        groups[i]?.push({ ...m, type, inheritedFrom: m.inheritedFrom ?? base?.getName() });
+        groups[i]?.push({ ...m, type, inheritedFrom: base });
       }
     });
     base = base.getBaseClass();
   }
   return result;
-}
-
-/**
- * Type of a binding read from its class member, for the forms where the binding is declared elsewhere
- * (metadata arrays, a .d.ts): a setter accepts its parameter's type, a getter gives its return type,
- * a property its own type, unwrapped (InputSignal<T>, EventEmitter<T> → T) when `wrapped`.
- */
-function memberType(member: Node | undefined, wrapped: boolean): string {
-  if (!member) return 'unknown';
-  if (Node.isSetAccessorDeclaration(member)) {
-    return typeText(member.getParameters()[0]?.getType() ?? member.getType(), member);
-  }
-  if (Node.isGetAccessorDeclaration(member)) return typeText(member.getReturnType(), member);
-  if (Node.isPropertyDeclaration(member)) return typeText(wrapped ? unwrap(member.getType()) : member.getType(), member);
-  return 'unknown';
 }
 
 /**
@@ -727,21 +734,18 @@ function metadataBindings(cls: ClassDeclaration, meta: ObjectLiteralExpression |
       warnings.push(`${cls.getName()}: \`${key}\` entry \`${oneLine(el.getText())}\` not understood, not documented`);
       return [];
     }
-    const member = cls.getProperty(prop) ?? cls.getSetAccessor(prop) ?? cls.getGetAccessor(prop);
+    const member = memberOf(cls, prop);
     if (!member) warnings.push(`${cls.getName()}: \`${key}\` entry \`${prop}\` has no matching class property (typo?)`);
-    const doc = member ? readDoc(member) : undefined;
-    const type = memberType(member, key === 'outputs'); // an output emits T of EventEmitter<T>
     return [
       {
         name: alias || prop,
         prop,
         wrapped: key === 'outputs' && !!member && Node.isPropertyDeclaration(member),
-        type,
+        type: memberType(member, key === 'outputs'), // an output emits T of EventEmitter<T>
         required,
         transform,
         default: key === 'inputs' && member && Node.isPropertyDeclaration(member) ? member.getInitializer()?.getText() : undefined,
-        description: doc?.description,
-        deprecated: doc?.deprecated,
+        ...docOf(member),
       },
     ];
   });
@@ -750,12 +754,6 @@ function metadataBindings(cls: ClassDeclaration, meta: ObjectLiteralExpression |
 // =============================================================================
 // Host directives
 // =============================================================================
-interface Bindings {
-  inputs: Member[];
-  models: Member[];
-  outputs: Member[];
-}
-
 /** One entry of `hostDirectives`, for the "Host directives" section of the page. */
 interface HostDirective {
   name: string;
@@ -788,7 +786,6 @@ function externalBindings(cls: ClassDeclaration): Bindings | undefined {
     n && Node.isTypeLiteral(n)
       ? n.getProperties().map((p) => ({ prop: str(p.getNameNode()) ?? p.getName(), value: p.getTypeNode() }))
       : [];
-  const memberOf = (prop: string) => cls.getProperty(prop) ?? cls.getSetAccessor(prop) ?? cls.getGetAccessor(prop);
   const isModel = (m?: Node) => {
     const t = m && Node.isPropertyDeclaration(m) ? m.getType() : undefined;
     return (t?.getAliasSymbol() ?? t?.getSymbol())?.getName() === 'ModelSignal';
@@ -797,37 +794,26 @@ function externalBindings(cls: ClassDeclaration): Bindings | undefined {
   const modelNames = new Set<string>();
 
   for (const { prop, value } of entries(inputsNode)) {
-    const member = memberOf(prop);
+    const member = memberOf(cls, prop);
     const options = value && Node.isTypeLiteral(value) ? value : undefined;
     const option = (name: string) => literalType(options?.getProperty(name)?.getTypeNode());
     const name = options ? (option('alias') ?? prop) : (literalType(value) ?? prop);
     const model = isModel(member);
     if (model) modelNames.add(`${name}Change`);
-    const doc = member ? readDoc(member) : undefined;
     (model ? result.models : result.inputs).push({
       name,
       prop,
       wrapped: option('isSignal') === 'true' || model,
       type: memberType(member, option('isSignal') === 'true' || model),
       required: option('required') === 'true',
-      description: doc?.description,
-      deprecated: doc?.deprecated,
+      ...docOf(member),
     });
   }
   for (const { prop, value } of entries(outputsNode)) {
     const name = literalType(value) ?? prop;
     if (modelNames.has(name)) continue; // the `xChange` half of a model
-    const member = memberOf(prop);
-    const doc = member ? readDoc(member) : undefined;
-    result.outputs.push({
-      name,
-      prop,
-      wrapped: true,
-      type: memberType(member, true),
-      required: false,
-      description: doc?.description,
-      deprecated: doc?.deprecated,
-    });
+    const member = memberOf(cls, prop);
+    result.outputs.push({ name, prop, wrapped: true, type: memberType(member, true), required: false, ...docOf(member) });
   }
   return result;
 }
@@ -842,12 +828,13 @@ const classOf = (expr: Node) =>
  * A bare directive is applied but exposes nothing. In 'fxTooltip: hint', `fxTooltip` is the directive's
  * public name and `hint` the name on the host. A model is two-way on the host only if both halves are
  * exposed with matching names (`value: x` and `valueChange: xChange`); otherwise it is an input or an output.
- * A host directive's own host directives count too (`stack` guards against a cycle in broken code).
+ * A host directive's own host directives count too (`stack`, the classes read above `cls`, guards against
+ * a cycle in broken code).
  */
 function hostDirectiveBindings(
   cls: ClassDeclaration,
   meta: ObjectLiteralExpression | undefined,
-  stack = new Set<ClassDeclaration>(),
+  stack: Set<ClassDeclaration>,
 ): { bindings: Bindings; directives: HostDirective[] } {
   const bindings: Bindings = { inputs: [], models: [], outputs: [] };
   const directives: HostDirective[] = [];
@@ -865,6 +852,7 @@ function hostDirectiveBindings(
           return name ? [[name, alias || name] as const] : [];
         })
       : [];
+  const chain = new Set([...stack, cls]);
 
   for (const el of list.getElements()) {
     const ref = Node.isObjectLiteralExpression(el) ? propOf(el, 'directive') : el;
@@ -875,7 +863,7 @@ function hostDirectiveBindings(
       continue;
     }
     const pkg = decl.getSourceFile().isInNodeModules() ? packageOf(decl.getSourceFile().getFilePath()) : undefined;
-    const own = pkg ? externalBindings(decl) : stack.has(decl) ? undefined : fullBindings(decl, new Set([...stack, cls]));
+    const own = pkg ? externalBindings(decl) : chain.has(decl) ? undefined : fullBindings(decl, chain);
     if (!own) {
       warnings.push(`${cls.getName()}: bindings of host directive ${name}${pkg ? ` (${pkg})` : ''} could not be read`);
       directives.push({ name, decl, pkg, exposed: [] });
@@ -886,7 +874,7 @@ function hostDirectiveBindings(
     const exposed: string[] = [];
     // Exposed on the host: renamed, marked with its directive. Its origin on the directive side no longer matters.
     const expose = (m: Member, alias: string, list: Member[], syntax: keyof typeof BINDING_SYNTAX) => {
-      list.push({ ...m, name: alias, prop: `${name}.${m.prop}`, inheritedFrom: undefined, fromHostDirective: name });
+      list.push({ ...m, name: alias, prop: `${name}.${m.prop}`, inheritedFrom: undefined, fromHostDirective: decl });
       exposed.push(BINDING_SYNTAX[syntax](alias));
     };
     const twoWay = new Set<string>(); // `xChange` outputs already exposed as the second half of a model
@@ -915,15 +903,19 @@ function hostDirectiveBindings(
   return { bindings, directives };
 }
 
-/** Everything a class offers to templates: own and inherited bindings, then those exposed by its host directives. */
-function fullBindings(cls: ClassDeclaration, stack = new Set<ClassDeclaration>()): Bindings {
-  const meta = metadata(cls.getDecorators().find((d) => d.getName() in NG_DECORATORS));
+/**
+ * Everything a class offers to templates: own and inherited bindings, then those exposed by its host
+ * directives, and the list of those directives.
+ */
+function fullBindings(cls: ClassDeclaration, stack = new Set<ClassDeclaration>()): Bindings & { directives: HostDirective[] } {
+  const meta = metadata(ngDecorator(cls));
   const own = allBindings(cls, meta);
-  const host = hostDirectiveBindings(cls, meta, stack).bindings;
+  const host = hostDirectiveBindings(cls, meta, stack);
   return {
-    inputs: [...own.inputs, ...host.inputs],
-    models: [...own.models, ...host.models],
-    outputs: [...own.outputs, ...host.outputs],
+    inputs: [...own.inputs, ...host.bindings.inputs],
+    models: [...own.models, ...host.bindings.models],
+    outputs: [...own.outputs, ...host.bindings.outputs],
+    directives: host.directives,
   };
 }
 
@@ -987,8 +979,8 @@ function memberList(title: string, binding: keyof typeof BINDING_SYNTAX, list: M
       (m.required ? ' **required**' : '') +
       (m.default ? ` = ${code(m.default)}` : '') +
       (m.transform ? ` · transform: ${m.transform}` : '') +
-      (m.inheritedFrom ? ` · inherited from ${m.inheritedFrom}` : '') +
-      (m.fromHostDirective ? ` · from host directive ${m.fromHostDirective}` : '') +
+      (m.inheritedFrom ? ` · inherited from ${m.inheritedFrom.getName()}` : '') +
+      (m.fromHostDirective ? ` · from host directive ${m.fromHostDirective.getName()}` : '') +
       (m.deprecated ? ` ⚠️ deprecated: ${oneLine(m.deprecated)}` : '') +
       (m.description ? ` — ${oneLine(m.description)}` : ''),
   );
@@ -1001,7 +993,7 @@ function memberList(title: string, binding: keyof typeof BINDING_SYNTAX, list: M
  *   - NgStyle (`@angular/common`): exposes `[panelStyle]`
  */
 function hostDirectiveLine(d: HostDirective, fromPage: string): string {
-  const target = d.decl && pages.get(d.decl);
+  const target = d.decl && owners.get(d.decl)?.ctx.page;
   const label = d.pkg
     ? `${d.name} (\`${d.pkg}\`)`
     : target
@@ -1020,11 +1012,9 @@ const examples = (doc: Doc) =>
 // Symbol description — one function per kind of export
 // =============================================================================
 /** Classes: components, directives, pipes, services, or plain classes, based on their Angular decorator. */
-function describeClass(name: string, cls: ClassDeclaration, ctx: Context): Entry {
+function describeClass(name: string, kind: Kind, cls: ClassDeclaration, ctx: Context): Entry {
   const doc = readDoc(cls);
-  const decorator = cls.getDecorators().find((d) => d.getName() in NG_DECORATORS);
-  const kind: Kind = (decorator && NG_DECORATORS[decorator.getName()]) ?? 'class';
-  const meta = metadata(decorator);
+  const meta = metadata(ngDecorator(cls));
   const lines: string[] = [];
   let selector: string | undefined;
   let pipeName: string | undefined;
@@ -1033,26 +1023,25 @@ function describeClass(name: string, cls: ClassDeclaration, ctx: Context): Entry
     // --- Components and directives: selector, bindings, slots, documented public methods
     selector = str(propOf(meta, 'selector'));
     const exportAs = str(propOf(meta, 'exportAs'));
-    const own = allBindings(cls, meta);
-    const host = hostDirectiveBindings(cls, meta, new Set([cls]));
-    const inputs = [...own.inputs, ...host.bindings.inputs];
-    const models = [...own.models, ...host.bindings.models];
-    const outputs = [...own.outputs, ...host.bindings.outputs];
-    // No selector: an abstract base class (`@Directive()`), only meant to be extended.
+    const { inputs, models, outputs, directives } = fullBindings(cls);
+    // No selector: a directive is an abstract base class (`@Directive()`), only meant to be extended;
+    // a component is created from code (a route, a dialog).
     const selectorLine = selector
       ? `Selector: \`${selector}\`${exportAs ? ` · exportAs: \`${exportAs}\`` : ''}`
-      : 'No selector: base class, extend it instead of using it in a template.';
+      : kind === 'directive'
+        ? 'No selector: base class, extend it instead of using it in a template.'
+        : 'No selector: not used in a template, created from code (a route, a dialog, `ViewContainerRef.createComponent()`).';
     lines.push(...header(name, kind, doc, ctx, [selectorLine]));
     lines.push(...memberList('Inputs', 'input', inputs));
     lines.push(...memberList('Outputs', 'output', outputs));
     lines.push(...memberList('Two-way bindings (model)', 'model', models, 'Each one also works as `[name]` + `(nameChange)`.'));
-    if (host.directives.length) {
+    if (directives.length) {
       lines.push(
         '',
         '## Host directives',
         'Applied to every instance. Only the bindings listed here can be used in templates.',
         '',
-        ...host.directives.map((d) => hostDirectiveLine(d, ctx.page)),
+        ...directives.map((d) => hostDirectiveLine(d, ctx.page)),
       );
     }
     if (kind === 'component') {
@@ -1062,16 +1051,23 @@ function describeClass(name: string, cls: ClassDeclaration, ctx: Context): Entry
     // Only methods WITH a JSDoc description: undocumented public methods are usually template handlers.
     const methods = cls
       .getMethods()
-      .filter((m) => isPublic(m) && !LIFECYCLE.test(m.getName()) && readFnDoc(m).description)
-      .flatMap((m) => signature(m.getName(), m).map((s) => `- ${code(s)} — ${firstParagraph(readFnDoc(m).description)}`));
+      .filter((m) => isPublic(m) && !LIFECYCLE.test(m.getName()))
+      .flatMap((m) => {
+        const d = readFnDoc(m).description;
+        return d ? signature(m.getName(), m).map((s) => `- ${code(s)} — ${firstParagraph(d)}`) : [];
+      });
     if (methods.length) lines.push('', '## Public methods (via viewChild or exportAs)', ...methods);
 
     // Documentation completeness checks (fail the run in --strict mode). The class description is
-    // checked with the page. An inherited or exposed binding is reported on the class that declares it.
-    const undocumented = (list: Member[], what: string) =>
-      list
-        .filter((m) => !m.description && !m.inheritedFrom && !m.fromHostDirective)
-        .forEach((m) => warnings.push(`${name}.${m.name}: undocumented ${what}`));
+    // checked with the page. An inherited or exposed binding is reported on the page of the class that
+    // declares it, or here if that class has no page (not exported). Another package's docs are not checked.
+    const undocumented = (list: Member[], what: string) => {
+      for (const m of list) {
+        const origin = m.fromHostDirective ?? m.inheritedFrom;
+        if (m.description || (origin && (owners.has(origin) || origin.getSourceFile().isInNodeModules()))) continue;
+        warnings.push(`${name}.${m.name}: undocumented ${what}${origin ? ` (declared by ${origin.getName()})` : ''}`);
+      }
+    };
     undocumented(inputs.concat(models), 'input');
     undocumented(outputs, 'output');
   } else if (kind === 'pipe') {
@@ -1118,11 +1114,13 @@ const packageOf = (file: string) =>
   [...toPosix(file).matchAll(/\/node_modules\/((?:@[^/]+\/)?[^/]+)\//g)].at(-1)?.[1] ?? 'another package';
 
 /**
- * Kind of a symbol declared in a .d.ts of another package. Decorators are gone from a .d.ts:
- * Angular classes are recognized by the static declaration the compiler adds (ɵcmp, ɵdir, ɵpipe, ɵprov).
+ * Kind of an exported declaration, undefined for the ones not documented (namespaces, etc.).
+ * Decorators are gone from a .d.ts of another package: there, Angular classes are recognized by the
+ * static declaration the compiler adds (ɵcmp, ɵdir, ɵpipe, ɵprov).
  */
-function externalKind(decl: Node): Kind | undefined {
+function kindOf(decl: Node): Kind | undefined {
   if (Node.isClassDeclaration(decl)) {
+    if (!decl.getSourceFile().isInNodeModules()) return NG_DECORATORS[ngDecorator(decl)?.getName() ?? ''] ?? 'class';
     const has = (p: string) => !!decl.getStaticProperty(p);
     return has('ɵcmp') ? 'component' : has('ɵdir') ? 'directive' : has('ɵpipe') ? 'pipe' : has('ɵprov') ? 'service' : 'class';
   }
@@ -1130,7 +1128,8 @@ function externalKind(decl: Node): Kind | undefined {
   if (Node.isTypeAliasDeclaration(decl)) return 'type';
   if (Node.isEnumDeclaration(decl)) return 'enum';
   if (Node.isFunctionDeclaration(decl)) return 'function';
-  if (Node.isVariableDeclaration(decl)) return 'const';
+  // `export const f = () => ...` is a function for the consumer: documented and indexed as one.
+  if (Node.isVariableDeclaration(decl)) return functionInitializer(decl) ? 'function' : 'const';
   return undefined;
 }
 
@@ -1139,9 +1138,7 @@ function externalKind(decl: Node): Kind | undefined {
  * Short page: the import path to use, and where the full documentation lives. Its own JSDoc is not
  * copied: it belongs to the other package and can be long.
  */
-function describeExternal(name: string, decl: Node, ctx: Context): Entry | undefined {
-  const kind = externalKind(decl);
-  if (!kind) return undefined;
+function describeExternal(name: string, kind: Kind, decl: Node, ctx: Context): Entry {
   const pkg = packageOf(decl.getSourceFile().getFilePath());
   const doc: Doc = { usage: [], avoid: [], replaces: [], examples: [], description: `Re-exported from \`${pkg}\`.` };
   const markdown = [...header(name, kind, doc, ctx), '', `See the documentation of \`${pkg}\` for its API.`].join('\n');
@@ -1150,23 +1147,18 @@ function describeExternal(name: string, decl: Node, ctx: Context): Entry | undef
 
 /** Any exported declaration. Non-class symbols are shown as their source or signature in a code block. */
 function describe(name: string, decl: Node, ctx: Context): Entry | undefined {
-  if (decl.getSourceFile().isInNodeModules()) return describeExternal(name, decl, ctx);
-  if (Node.isClassDeclaration(decl)) return describeClass(name, decl, ctx);
+  const kind = kindOf(decl);
+  if (!kind) return undefined;
+  if (decl.getSourceFile().isInNodeModules()) return describeExternal(name, kind, decl, ctx);
+  if (Node.isClassDeclaration(decl)) return describeClass(name, kind, decl, ctx);
 
   const doc = Node.isFunctionDeclaration(decl) ? readFnDoc(decl) : readDoc(decl);
-  let kind: Kind;
   let body: string;
-  if (Node.isInterfaceDeclaration(decl)) [kind, body] = ['interface', decl.getText()];
-  else if (Node.isTypeAliasDeclaration(decl)) [kind, body] = ['type', decl.getText()];
-  else if (Node.isEnumDeclaration(decl)) [kind, body] = ['enum', decl.getText()];
-  else if (Node.isFunctionDeclaration(decl)) [kind, body] = ['function', signature(name, decl).join('\n')];
+  if (Node.isFunctionDeclaration(decl)) body = signature(name, decl).join('\n');
   else if (Node.isVariableDeclaration(decl)) {
-    // `export const f = () => ...` is a function for the consumer: documented and indexed as one.
     const fn = functionInitializer(decl);
-    [kind, body] = fn
-      ? ['function', signature(name, fn).join('\n')]
-      : ['const', `const ${name}: ${typeText(decl.getType(), decl)};`];
-  } else return undefined; // other kinds of exports (namespaces, etc.) are ignored
+    body = fn ? signature(name, fn).join('\n') : `const ${name}: ${typeText(decl.getType(), decl)};`;
+  } else body = decl.getText(); // interface, type alias, enum
 
   const markdown = [...header(name, kind, doc, ctx), '', codeBlock('ts', body), ...examples(doc)].join('\n');
   return { name, kind, doc, ep: ctx.ep, page: ctx.page, markdown };
@@ -1177,10 +1169,8 @@ function describe(name: string, decl: Node, ctx: Context): Entry | undefined {
 // =============================================================================
 checkOutDir();
 const entryPoints = discoverEntryPoints();
-if (!entryPoints.length) {
-  console.error(`No ng-package.json with an existing entry file found under ${LIB_ROOT}`);
-  process.exit(2);
-}
+if (!entryPoints.length) fail(`No ng-package.json with an existing entry file found under ${LIB_ROOT}`);
+if (!existsSync(TSCONFIG)) fail(`${TSCONFIG} not found: pass --tsconfig <file>.`);
 
 // Map every import path to its entry file, so imports between entry points
 // (e.g. `@acme/ui/core` used in `forms`) resolve to the sources, not to a dist/ build.
@@ -1247,11 +1237,10 @@ for (const path of [...new Set(owned.map(docPath))].sort()) {
   sharing.set(path.toLowerCase(), n);
   pageOf.set(path, n === 1 ? path : path.replace(/\.md$/, `-${n}.md`));
 }
+// Also read while pages are described: to link a host directive's page, and to know which classes have one.
 const owners = new Map<Node, { name: string; ctx: Context }>(
   owned.map(({ decl, name, ep, alsoFrom }) => [decl, { name, ctx: { ep, alsoFrom, page: pageOf.get(docPath({ name, ep }))! } }]),
 );
-// Page of each declaration (read by hostDirectiveLine).
-const pages = new Map<Node, string>([...owners].map(([decl, { ctx }]) => [decl, ctx.page]));
 
 const byFile = new Map<string, Entry[]>(); // doc file path → described declarations
 for (const [decl, { name, ctx }] of owners) {

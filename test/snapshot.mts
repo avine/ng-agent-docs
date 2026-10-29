@@ -91,8 +91,10 @@ const CASES: Case[] = [
     args: ['--root', 'single-entry', '--tsconfig', 'single-entry/tsconfig.alt.json'],
     docs: ['api/FxButton.md'],
   },
-  // Usage errors: exit code 2.
+  // Usage errors: exit code 2, never 1 (incomplete docs in --strict mode), and no stack trace.
   { name: 'missing-root', args: [] },
+  { name: 'unknown-option', args: ['--root', 'single-entry', '--stict'] },
+  { name: 'missing-tsconfig', args: ['--root', 'single-entry', '--tsconfig', 'single-entry/missing.json'] },
   { name: 'no-entry-point', args: ['--root', 'no-entry-point'] },
   // --out safety: refused with exit code 2, nothing deleted.
   {

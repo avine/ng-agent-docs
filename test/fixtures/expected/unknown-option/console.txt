@@ -1,0 +1,8 @@
+$ ng-agent-docs --root single-entry --stict --out <out>
+
+--- stdout
+
+--- stderr
+Unknown option '--stict'
+---
+exit code: 2

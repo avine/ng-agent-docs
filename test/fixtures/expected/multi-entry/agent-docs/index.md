@@ -78,9 +78,10 @@ Import each symbol from the entry point given in its section heading.
 ## `@fixtures/multi-entry/overlay` — Dialogs, tooltips and toasts.
 
 ### Components
+- [FxConfirmDialog](api/overlay/FxConfirmDialog.md) — Content of a confirmation dialog, opened with FxDialogService.
 - [FxHighlightCard](api/overlay/FxHighlightCard.md) `fx-highlight-card` — Card built on a mixin: inherits `elevation` from CardBase, and gets a warning for the mixin's own bindings.
 - [FxPopover](api/overlay/FxPopover.md) `fx-popover` — Popover.
-- [FxStyledPanel](api/overlay/FxStyledPanel.md) `fx-styled-panel` — Panel that extends a directive from another package: its inherited bindings can't be read from a .d.ts.
+- [FxStyledPanel](api/overlay/FxStyledPanel.md) `fx-styled-panel` — Panel that extends a directive from another package: its inherited bindings are read from the .d.ts.
 
 ### Directives
 - [FxAnchor](api/overlay/FxAnchor.md) `[fxAnchor]` — Positions an overlay next to its trigger.

@@ -4,7 +4,10 @@
 
 Selector: `fx-styled-panel`
 
-Panel that extends a directive from another package: its inherited bindings can't be read from a .d.ts.
+Panel that extends a directive from another package: its inherited bindings are read from the .d.ts.
+
+## Inputs
+- `[ngStyle]: { [klass: string]: any; } | null | undefined` · inherited from NgStyle
 
 ## Content projection (ng-content)
 - `default`

@@ -12,6 +12,7 @@ Import each symbol from the entry point given in its section heading.
 ### Components
 - [FxBadge](api/FxBadge.md) `fx-badge`
 - [FxButton](api/FxButton.md) `fx-button` — Action button. (replaces mat-button, mat-flat-button)
+- [FxConfirmDialog](api/FxConfirmDialog.md) — Content of a confirmation dialog, opened with FxDialogService.
 - [FxDatePicker](api/FxDatePicker.md) `fx-date-picker` — Date picker.
 - [FxDateRange](api/FxDateRange.md) `fx-date-range` — Date range picker.
 - [FxDateTimePicker](api/FxDateTimePicker.md) `fx-date-time-picker` — Date and time picker.
@@ -19,7 +20,7 @@ Import each symbol from the entry point given in its section heading.
 - [FxIconButton](api/FxIconButton.md) `fx-icon-button` — Button that only shows an icon. (replaces mat-icon-button) → ⚠️ prefer `fx-button` with an `aria-label` (deprecated)
 - [FxPopover](api/FxPopover.md) `fx-popover` — Popover.
 - [FxSelect](api/FxSelect.md) `fx-select` — Select field.
-- [FxStyledPanel](api/FxStyledPanel.md) `fx-styled-panel` — Panel that extends a directive from another package: its inherited bindings can't be read from a .d.ts.
+- [FxStyledPanel](api/FxStyledPanel.md) `fx-styled-panel` — Panel that extends a directive from another package: its inherited bindings are read from the .d.ts.
 - [FxTextField](api/FxTextField.md) `fx-text-field` — Single-line text field.
 
 ### Directives

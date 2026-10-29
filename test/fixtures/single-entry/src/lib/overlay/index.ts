@@ -1,6 +1,7 @@
 /** Dialogs, tooltips and toasts. @packageDocumentation */
 export * from './tooltip';
 export * from './dialog.service';
+export * from './confirm-dialog';
 export * from './toast.service';
 export * from './dialog-ref';
 export * from './overlay-base';

@@ -1,0 +1,8 @@
+$ ng-agent-docs --root single-entry --tsconfig single-entry/missing.json --out <out>
+
+--- stdout
+
+--- stderr
+<fixtures>/single-entry/missing.json not found: pass --tsconfig <file>.
+---
+exit code: 2

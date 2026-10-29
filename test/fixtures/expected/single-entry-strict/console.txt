@@ -1,7 +1,7 @@
 $ ng-agent-docs --root single-entry --strict --out <out>
 
 --- stdout
-agent-docs: 51 symbols from 1 entry point(s) → <out>
+agent-docs: 52 symbols from 1 entry point(s) → <out>
 --- stderr
 
 16 warning(s):
@@ -15,8 +15,8 @@ agent-docs: 51 symbols from 1 entry point(s) → <out>
   - FxSelect.missingProperty: undocumented input
   - FxDialogService.closeAll: undocumented method
   - FxToastService.position: undocumented property
-  - FxStyledPanel: inputs and outputs inherited from NgStyle (@angular/common) are not documented
   - FxHighlightCard: bindings declared by the mixin `withHighlight(CardBase)` are not documented
+  - FxHighlightCard.outlined: undocumented input (declared by CardBase)
   - FxPopover: host directive FxAnchor has no input `nope` to expose
   - FxBadge: missing JSDoc description
   - FxId: missing JSDoc description
