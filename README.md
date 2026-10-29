@@ -103,7 +103,7 @@ In their `CLAUDE.md` or `AGENTS.md`:
 ```md
 ## @acme/ui
 API: read node_modules/@acme/ui/agent-docs/index.md,
-then only the relevant api/.../<Symbol>.md file. Do not read the .d.ts files.
+then only the relevant api/.../<Symbol>.md file. Read @acme/ui's .d.ts files only if that page does not answer.
 ```
 
 The `exports` field that ng-packagr writes only limits imports: agents can still read
@@ -123,4 +123,4 @@ npm run test:update   # accept an intended change in the output
 npm run test:dist     # same snapshot test, on the built dist/ng-agent-docs.mjs
 ```
 
-Test libraries and expected output are in `test/fixtures/`, see its README.
+Test libraries and expected output are in [test/fixtures/](test/fixtures/README.md).
