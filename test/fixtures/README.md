@@ -59,5 +59,5 @@ a library that is not built yet, or a `dest` holding another package.
 - These sources are compiled by nothing: they are excluded from `tsconfig.json`, keep them out of any
   linter configuration. `missing-template.html` is missing on purpose, so the folder would not build.
 - `.gitattributes` forces LF line endings, so the snapshot compares equal on Windows.
-- `dist/`, `node_modules/`, `.cache/` and `agent-docs/` decoys are created by the test runner during
-  the run, not committed: git usually ignores those folders.
+- `dist/`, `node_modules/` and `.cache/` decoys are created by the test runner during the run, not
+  committed: git usually ignores those folders.

@@ -2,6 +2,8 @@
 
 `import { FxTone } from '@fixtures/multi-entry/core';`
 
+Also exported from: `@fixtures/multi-entry/button` as `FxButtonTone`
+
 Visual tone of a component.
 
 Drives the color and the icon.

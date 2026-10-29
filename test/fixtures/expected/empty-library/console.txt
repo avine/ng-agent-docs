@@ -1,0 +1,8 @@
+$ ng-agent-docs --root <scratch>/lib --out <out>
+
+--- stdout
+agent-docs: 0 symbols from 1 entry point(s) → <out>
+--- stderr
+
+---
+exit code: 0

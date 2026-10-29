@@ -22,7 +22,7 @@ const SINGLE_NAME = '@fixtures/single-entry';
 // Files of the multi-entry root that describe the library itself, not its sources.
 const ROOT_FILES = new Set(['package.json', 'ng-package.json', 'tsconfig.lib.json', 'index.ts']);
 // Runtime decoys created by test/snapshot.mts, in case a run was interrupted.
-const SKIP_DIRS = new Set(['node_modules', 'dist', 'agent-docs', '.cache']);
+const SKIP_DIRS = new Set(['node_modules', 'dist', '.cache']);
 
 const toPosix = (p: string) => p.split(sep).join('/');
 const readJson = <T,>(file: string) => JSON.parse(readFileSync(file, 'utf8')) as T;
