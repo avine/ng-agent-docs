@@ -129,8 +129,8 @@ interface Member {
 /** Every template binding of a class, by kind. */
 interface Bindings {
   inputs: Member[];
-  models: Member[];
   outputs: Member[];
+  models: Member[];
 }
 
 /** Where a symbol is documented, and how it is imported. */
@@ -509,7 +509,7 @@ function functionInitializer(decl: VariableDeclaration): ArrowFunction | Functio
 }
 
 // =============================================================================
-// Angular bindings: inputs, models, outputs
+// Angular bindings: inputs, outputs, models
 // =============================================================================
 // Class member a binding is declared on: a property, or a setter or getter.
 const memberOf = (cls: ClassDeclaration, prop: string) =>
@@ -578,8 +578,8 @@ function decoratorInput(
 /** Collects every template binding of a component or directive: signal-based, decorators, and metadata arrays. */
 function bindings(cls: ClassDeclaration, meta: ObjectLiteralExpression | undefined): Bindings {
   const inputs: Member[] = [];
-  const models: Member[] = [];
   const outputs: Member[] = [];
+  const models: Member[] = [];
 
   for (const p of cls.getProperties()) {
     // 1. Signal-based: input() / input.required() / model() / output() / outputFromObservable()
@@ -634,7 +634,7 @@ function bindings(cls: ClassDeclaration, meta: ObjectLiteralExpression | undefin
   // 5. Older style, in the decorator metadata: @Component({ inputs: [...], outputs: [...] })
   inputs.push(...metadataBindings(cls, meta, 'inputs'));
   outputs.push(...metadataBindings(cls, meta, 'outputs'));
-  return { inputs, models, outputs };
+  return { inputs, outputs, models };
 }
 
 /**
@@ -648,7 +648,7 @@ function bindings(cls: ClassDeclaration, meta: ObjectLiteralExpression | undefin
  */
 function allBindings(cls: ClassDeclaration, meta: ObjectLiteralExpression | undefined): Bindings {
   const result = bindings(cls, meta);
-  const groups = [result.inputs, result.models, result.outputs] as const;
+  const groups = [result.inputs, result.outputs, result.models] as const;
   const seen = new Set(groups.flatMap((list) => list.map((m) => m.prop)));
   const visited = new Set<ClassDeclaration>([cls]); // guards against a cycle in broken code
 
@@ -670,9 +670,9 @@ function allBindings(cls: ClassDeclaration, meta: ObjectLiteralExpression | unde
     visited.add(base);
     checkMixin(base);
     const inherited = base.getSourceFile().isInNodeModules()
-      ? (externalBindings(base) ?? { inputs: [], models: [], outputs: [] }) // a plain class has none
+      ? (externalBindings(base) ?? { inputs: [], outputs: [], models: [] }) // a plain class has none
       : bindings(base, metadata(ngDecorator(base)));
-    [inherited.inputs, inherited.models, inherited.outputs].forEach((list, i) => {
+    [inherited.inputs, inherited.outputs, inherited.models].forEach((list, i) => {
       for (const m of list) {
         if (seen.has(m.prop)) continue; // redeclared lower in the chain
         seen.add(m.prop);
@@ -780,7 +780,7 @@ function externalBindings(cls: ClassDeclaration): Bindings | undefined {
     const t = m && Node.isPropertyDeclaration(m) ? m.getType() : undefined;
     return (t?.getAliasSymbol() ?? t?.getSymbol())?.getName() === 'ModelSignal';
   };
-  const result: Bindings = { inputs: [], models: [], outputs: [] };
+  const result: Bindings = { inputs: [], outputs: [], models: [] };
   const modelNames = new Set<string>();
 
   for (const { prop, value } of entries(inputsNode)) {
@@ -826,7 +826,7 @@ function hostDirectiveBindings(
   meta: ObjectLiteralExpression | undefined,
   stack: Set<ClassDeclaration>,
 ): { bindings: Bindings; directives: HostDirective[] } {
-  const bindings: Bindings = { inputs: [], models: [], outputs: [] };
+  const bindings: Bindings = { inputs: [], outputs: [], models: [] };
   const directives: HostDirective[] = [];
   const list = propOf(meta, 'hostDirectives');
   if (!list) return { bindings, directives };
@@ -903,8 +903,8 @@ function fullBindings(cls: ClassDeclaration, stack = new Set<ClassDeclaration>()
   const host = hostDirectiveBindings(cls, meta, stack);
   return {
     inputs: [...own.inputs, ...host.bindings.inputs],
-    models: [...own.models, ...host.bindings.models],
     outputs: [...own.outputs, ...host.bindings.outputs],
+    models: [...own.models, ...host.bindings.models],
     directives: host.directives,
   };
 }
@@ -1013,7 +1013,7 @@ function describeClass(name: string, kind: Kind, cls: ClassDeclaration, ctx: Con
     // --- Components and directives: selector, bindings, slots, documented public methods
     selector = str(propOf(meta, 'selector'));
     const exportAs = str(propOf(meta, 'exportAs'));
-    const { inputs, models, outputs, directives } = fullBindings(cls);
+    const { inputs, outputs, models, directives } = fullBindings(cls);
     // No selector: a directive is an abstract base class (`@Directive()`), only meant to be extended;
     // a component is created from code (a route, a dialog).
     const selectorLine = selector
