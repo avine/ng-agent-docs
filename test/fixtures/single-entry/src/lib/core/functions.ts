@@ -47,5 +47,5 @@ export const identity = (<T>(value: T) => value) as <T>(value: T) => T;
 /** Tells whether a string is empty. Arrow function in parentheses only. */
 export const isEmpty = ((value: string): boolean => value.length === 0);
 
-/** Tells whether a number is even. Typed on the variable: the alias name is not shown (known limitation). */
+/** Tells whether a number is even. Typed on the variable: documented with that type, as in the .d.ts. */
 export const isEven: FxPredicate<number> = (n) => n % 2 === 0;

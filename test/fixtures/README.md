@@ -35,7 +35,6 @@ The snapshot records the current behavior. Fixing one of these shows up as an ex
 - A template with `${}` substitutions is not scanned for slots (`FxDatePicker`).
 - An inherited setter input shows its setter's type (`width`), except when that type uses the base
   class's type parameters: then it shows the getter's type, resolved for the subclass (no fixture).
-- A function typed on its variable shows the parameter types, not the alias name (`isEven`).
 - Exports that get no page are reported as warnings, never dropped silently: the default export,
   `export * as ns` (`fxMath`), a namespace (`FxInternals`) and an unresolvable export (`missingHelper`).
   Symbols re-exported from another package (`booleanAttribute`, `Signal`, `DatePipe`) get a short page.

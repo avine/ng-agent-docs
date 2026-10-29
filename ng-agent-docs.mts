@@ -1139,7 +1139,9 @@ function describe(name: string, decl: Node, ctx: Context): Entry | undefined {
   let body: string;
   if (Node.isFunctionDeclaration(decl)) body = signature(name, decl).join('\n');
   else if (Node.isVariableDeclaration(decl)) {
-    const fn = functionInitializer(decl);
+    // A function typed on its variable (`authGuard: CanActivateFn = ...`) keeps that type, as in the .d.ts:
+    // the alias name tells what the function is for, and the arrow's inferred signature can be narrower.
+    const fn = decl.getTypeNode() ? undefined : functionInitializer(decl);
     body = fn ? signature(name, fn).join('\n') : `const ${name}: ${typeText(decl.getType(), decl)};`;
   } else body = decl.getText(); // interface, type alias, enum
 
