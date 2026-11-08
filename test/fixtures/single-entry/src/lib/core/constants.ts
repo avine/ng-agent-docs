@@ -11,3 +11,13 @@ export const FX_PAGE_SIZE = 20;
 
 /** Breakpoints, in pixels. */
 export const FX_BREAKPOINTS = { mobile: 600, tablet: 960, desktop: 1280 } as const;
+
+export interface FxTheme {
+  accent: string;
+}
+
+/**
+ * Default theme. The interface of the same name has no JSDoc: this description makes the index line,
+ * and this part comes first on the page.
+ */
+export const FxTheme: FxTheme = { accent: 'blue' };

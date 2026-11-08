@@ -1,0 +1,8 @@
+$ ng-agent-docs --root <scratch>/lib --out <out>
+
+--- stdout
+
+--- stderr
+<scratch>/lib/package.json: no "name", the import path of the library.
+---
+exit code: 2

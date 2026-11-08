@@ -19,7 +19,7 @@ Single-line text field. Decorator-based API, as in a legacy library.
 - `[fxRequired]: boolean` **required** = `false` · transform: booleanAttribute — Marks the field as required. Object options: alias, required and transform.
 - `[dense]: boolean` = `false` ⚠️ deprecated: Use `size="s"`. — Compact layout.
 - `[hint]: string` = `''`
-- `[maxLength]: string | number` — Maximum number of characters. Input on a setter: the type comes from the parameter.
+- `[maxLength]: string | number` = `524288` — Maximum number of characters. Input on a setter: the type comes from the parameter.
 - `[value]: string` — Current value. Input on a getter.
 
 ## Outputs
@@ -31,3 +31,4 @@ Single-line text field. Decorator-based API, as in a legacy library.
 - `[fxPrefix]`
 - `[fxSuffix]`
 - `[fxHint]`
+- `input[type='checkbox']`

@@ -41,8 +41,16 @@ In the workspace's `package.json`:
 ```
 
 `--strict` fails the build when the docs are incomplete, so an incomplete package is never published.
-Incomplete means a symbol without a description, or an undocumented input, output, or public member of a
-service or class. A component's undocumented public methods are not counted: they are template handlers.
+Incomplete means a symbol without a description, an undocumented input, output, or public member of a
+service or class, or a page that shows a type of the library that has no page (`add(opts: AddOptions)`
+with `AddOptions` exported by no entry point: the agent cannot look it up). A component's undocumented
+public methods are not counted: they are template handlers.
+
+Each warning starts with the file and line to fix, relative to `--root`:
+
+```
+  - core/functions.ts:68: toOption: shows the type FxOptionInit (core/internal.ts), which has no page: export it from an entry point
+```
 
 There is nothing to add to `ng-package.json`: the folder is written after ng-packagr, next to the
 built `package.json`.
@@ -63,7 +71,8 @@ The output folder is deleted and fully regenerated on every run, so removed symb
 page. The command refuses an `--out` that is or contains the library, or that holds files it did not
 generate.
 
-Exit codes: `0` done, `1` warnings with `--strict`, `2` usage error.
+Exit codes: `0` done, `1` warnings with `--strict`, `2` usage error (options, or a missing or invalid
+`package.json` or `ng-package.json`), `3` unexpected error.
 
 ## Document the library
 
@@ -84,6 +93,8 @@ Everything comes from the library's sources:
 | `@replaces` | Older elements this one replaces, e.g. `mat-form-field`. |
 | `@example` | Code example, fenced (without a fence: an HTML template). Can contain `@if`, `@for` and `@let` blocks. |
 | `@deprecated` | Deprecation message. |
+| `@param`, `@returns` | Parameters and return value of a function, method or pipe. |
+| `@default` | Default value of an input whose default is not in the code (setter, `inputs` metadata). |
 
 An entry point gets a description from a `@packageDocumentation` block at the top of its entry file:
 
@@ -147,7 +158,7 @@ under `node_modules`.
 ```bash
 npm install
 npm run typecheck     # strict type check of the command and the test scripts
-npm test              # snapshot test on the fixtures (CI)
+npm test              # unit tests of the parsers, then snapshot test on the fixtures (CI)
 npm run test:update   # accept an intended change in the output
 npm run test:dist     # same snapshot test, on the bundled dist/ng-agent-docs.mjs
 ```

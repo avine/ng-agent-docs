@@ -10,7 +10,7 @@ Import each symbol from the entry point given in its section heading.
 ### Components
 - [FxBadge](api/button/FxBadge.md) `fx-badge`
 - [FxButton](api/button/FxButton.md) `fx-button` — Action button. (replaces mat-button, mat-flat-button)
-- [FxIconButton](api/button/FxIconButton.md) `fx-icon-button` — Button that only shows an icon. (replaces mat-icon-button) → ⚠️ prefer `fx-button` with an `aria-label` (deprecated)
+- [FxIconButton](api/button/FxIconButton.md) `fx-icon-button` — Button that only shows an icon. (replaces mat-icon-button) → ⚠️ prefer `fx-button` with an `aria-label`, written over two lines (deprecated)
 
 ### Directives
 - [FxButtonGroup](api/button/FxButtonGroup.md) `[fxButtonGroup]` — Groups buttons and manages a single selection.
@@ -28,6 +28,7 @@ Import each symbol from the entry point given in its section heading.
 - [FxDefaults](api/core/FxDefaults.md) — Default values applied when an input is not set.
 - [FxDensity](api/core/FxDensity.md) — Spacing density.
 - [FxEntityId](api/core/FxEntityId.md) — Unique identifier of a persisted entity.
+- [FxGroup](api/core/FxGroup.md) — Options shown under a heading.
 - [FxId](api/core/FxId.md)
 - [FxOption](api/core/FxOption.md) — One choice in a select or a radio group.
 - [FxPredicate](api/core/FxPredicate.md) — Predicate on a value.
@@ -45,6 +46,7 @@ Import each symbol from the entry point given in its section heading.
 - [FX_PAGE_SIZE](api/core/FX_PAGE_SIZE.md) — Default number of rows per page.
 - [fxCssClass](api/core/fxCssClass.md) — Builds a BEM-like CSS class.
 - [fxSize](api/core/fxSize-2.md) — Default size, as a value.
+- [FxTheme](api/core/FxTheme.md) — Default theme.
 - [identity](api/core/identity.md) — Returns its argument.
 - [isEmpty](api/core/isEmpty.md) — Tells whether a string is empty.
 - [isEven](api/core/isEven.md) — Tells whether a number is even.
@@ -54,6 +56,7 @@ Import each symbol from the entry point given in its section heading.
 - [negate](api/core/negate.md) — Negates a number.
 - [noop](api/core/noop.md) — Does nothing.
 - [round](api/core/round.md) — Rounds a number.
+- [toOption](api/core/toOption.md) — Builds an option from a value.
 
 ## `@fixtures/multi-entry/format` — Formatting pipes.
 

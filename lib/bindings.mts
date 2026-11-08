@@ -8,9 +8,10 @@ import {
   type PropertyDeclaration,
   type SetAccessorDeclaration,
   SyntaxKind,
+  type Type,
 } from 'ts-morph';
 import { readDoc } from './jsdoc.mts';
-import { type Bindings, type Member, warnings } from './model.mts';
+import { type Bindings, type Member, warn } from './model.mts';
 import { unwrap } from './signatures.mts';
 import { metadata, ngDecorator, oneLine, propOf, str, typeText } from './util.mts';
 
@@ -28,21 +29,28 @@ const memberOf = (cls: ClassDeclaration, prop: string) =>
  * Type of a binding, read from its class member: a setter accepts its parameter's type, a getter gives
  * its return type, a property its own type, unwrapped (InputSignal<T>, EventEmitter<T> → T) when `wrapped`.
  */
-function memberType(member: Node | undefined, wrapped: boolean): string {
-  if (!member) return 'unknown';
-  if (Node.isSetAccessorDeclaration(member)) {
-    return typeText(member.getParameters()[0]?.getType() ?? member.getType(), member);
-  }
-  if (Node.isGetAccessorDeclaration(member)) return typeText(member.getReturnType(), member);
-  if (Node.isPropertyDeclaration(member)) return typeText(wrapped ? unwrap(member.getType()) : member.getType(), member);
-  return 'unknown';
+function memberValueType(member: Node | undefined, wrapped: boolean): Type | undefined {
+  if (!member) return undefined;
+  if (Node.isSetAccessorDeclaration(member)) return member.getParameters()[0]?.getType() ?? member.getType();
+  if (Node.isGetAccessorDeclaration(member)) return member.getReturnType();
+  if (Node.isPropertyDeclaration(member)) return wrapped ? unwrap(member.getType()) : member.getType();
+  return undefined;
 }
+
+// `type` and `valueType` of a binding.
+const typed = (member: Node | undefined, wrapped: boolean) => {
+  const valueType = memberValueType(member, wrapped);
+  return { type: valueType && member ? typeText(valueType, member) : 'unknown', valueType };
+};
 
 // Description and deprecation of a binding, from the JSDoc of its class member (none if it is missing).
 const docOf = (member: Node | undefined) => {
   const doc = member && readDoc(member);
-  return { description: doc?.description, deprecated: doc?.deprecated };
+  return { description: doc?.description, deprecated: doc?.deprecated, decl: member };
 };
+
+// Default value written in the JSDoc (`@default 10`), for a binding whose default is not in the code.
+const docDefault = (member: Node | undefined) => (member ? readDoc(member).defaultValue : undefined);
 
 /**
  * Detects a signal-based binding: `x = input(...)`, `input.required(...)`, `model(...)`, `output(...)`.
@@ -70,17 +78,17 @@ const signalOptions = (call: CallExpression) =>
 function decoratorInput(
   m: PropertyDeclaration | SetAccessorDeclaration | GetAccessorDeclaration,
   d: Decorator,
-): Omit<Member, 'description' | 'deprecated'> {
+): Omit<Member, 'description' | 'deprecated' | 'decl'> {
   const arg = d.getArguments()[0];
   const opts = arg && Node.isObjectLiteralExpression(arg) ? arg : undefined;
   return {
     name: str(arg) ?? str(propOf(opts, 'alias')) ?? m.getName(),
     prop: m.getName(),
     wrapped: false,
-    type: memberType(m, false),
+    ...typed(m, false),
     transform: propOf(opts, 'transform')?.getText(),
     required: propOf(opts, 'required')?.getText() === 'true',
-    default: Node.isPropertyDeclaration(m) ? m.getInitializer()?.getText() : undefined,
+    default: (Node.isPropertyDeclaration(m) ? m.getInitializer()?.getText() : undefined) ?? docDefault(m),
   };
 }
 
@@ -103,10 +111,10 @@ function bindings(cls: ClassDeclaration, meta: ObjectLiteralExpression | undefin
         name: str(propOf(opts, 'alias')) ?? p.getName(),
         prop: p.getName(),
         wrapped: true,
-        type: memberType(p, true),
+        ...typed(p, true),
         transform,
         required: sig.required,
-        default: hasDefault ? first.getText() : undefined,
+        default: (hasDefault ? first.getText() : undefined) ?? (sig.fn === 'output' ? undefined : docDefault(p)),
         ...docOf(p),
       };
       (sig.fn === 'input' ? inputs : sig.fn === 'model' ? models : outputs).push(member);
@@ -127,7 +135,7 @@ function bindings(cls: ClassDeclaration, meta: ObjectLiteralExpression | undefin
         name: str(outputDecorator.getArguments()[0]) ?? p.getName(),
         prop: p.getName(),
         wrapped: true,
-        type: memberType(p, true),
+        ...typed(p, true),
         required: false,
         ...docOf(p),
       });
@@ -166,14 +174,15 @@ export function allBindings(cls: ClassDeclaration, meta: ObjectLiteralExpression
   const checkMixin = (c: ClassDeclaration) => {
     const expr = c.getExtends()?.getExpression();
     if (expr && Node.isCallExpression(expr)) {
-      warnings.push(`${cls.getName()}: bindings declared by the mixin \`${oneLine(expr.getText())}\` are not documented`);
+      warn(`${cls.getName()}: bindings declared by the mixin \`${oneLine(expr.getText())}\` are not documented`, expr);
     }
   };
   checkMixin(cls);
 
   let base = cls.getBaseClass();
-  if (!base && cls.getExtends()) {
-    warnings.push(`${cls.getName()}: base class \`${cls.getExtends()?.getText()}\` not resolved, its inputs and outputs are not documented`);
+  const heritage = cls.getExtends();
+  if (!base && heritage) {
+    warn(`${cls.getName()}: base class \`${heritage.getText()}\` not resolved, its inputs and outputs are not documented`, heritage);
   }
   while (base && !visited.has(base)) {
     visited.add(base);
@@ -193,8 +202,9 @@ export function allBindings(cls: ClassDeclaration, meta: ObjectLiteralExpression
         const keepOwn =
           setterType && !setterType.getDescendantsOfKind(SyntaxKind.Identifier).some((id) => typeParams.has(id.getText()));
         const t = keepOwn ? undefined : cls.getType().getProperty(m.prop)?.getTypeAtLocation(cls);
-        const type = t ? typeText(m.wrapped ? unwrap(t) : t, cls) : m.type;
-        groups[i]?.push({ ...m, type, inheritedFrom: base });
+        const valueType = t ? (m.wrapped ? unwrap(t) : t) : m.valueType;
+        const type = t && valueType ? typeText(valueType, cls) : m.type;
+        groups[i]?.push({ ...m, type, valueType, inheritedFrom: base });
       }
     });
     base = base.getBaseClass();
@@ -212,7 +222,7 @@ function metadataBindings(cls: ClassDeclaration, meta: ObjectLiteralExpression |
   const list = propOf(meta, key);
   if (!list) return [];
   if (!Node.isArrayLiteralExpression(list)) {
-    warnings.push(`${cls.getName()}: \`${key}\` metadata is not an array literal, its bindings are not documented`);
+    warn(`${cls.getName()}: \`${key}\` metadata is not an array literal, its bindings are not documented`, list);
     return [];
   }
   return list.getElements().flatMap((el): Member[] => {
@@ -230,21 +240,25 @@ function metadataBindings(cls: ClassDeclaration, meta: ObjectLiteralExpression |
       transform = propOf(el, 'transform')?.getText();
     }
     if (!prop) {
-      warnings.push(`${cls.getName()}: \`${key}\` entry \`${oneLine(el.getText())}\` not understood, not documented`);
+      warn(`${cls.getName()}: \`${key}\` entry \`${oneLine(el.getText())}\` not understood, not documented`, el);
       return [];
     }
     const member = memberOf(cls, prop);
-    if (!member) warnings.push(`${cls.getName()}: \`${key}\` entry \`${prop}\` has no matching class property (typo?)`);
+    if (!member) warn(`${cls.getName()}: \`${key}\` entry \`${prop}\` has no matching class property (typo?)`, el);
     return [
       {
         name: alias || prop,
         prop,
         wrapped: key === 'outputs' && !!member && Node.isPropertyDeclaration(member),
-        type: memberType(member, key === 'outputs'), // an output emits T of EventEmitter<T>
+        ...typed(member, key === 'outputs'), // an output emits T of EventEmitter<T>
         required,
         transform,
-        default: key === 'inputs' && member && Node.isPropertyDeclaration(member) ? member.getInitializer()?.getText() : undefined,
+        default:
+          key === 'inputs'
+            ? ((member && Node.isPropertyDeclaration(member) ? member.getInitializer()?.getText() : undefined) ?? docDefault(member))
+            : undefined,
         ...docOf(member),
+        decl: member ?? el, // a warning about it points to the class member, or to the entry if there is none
       },
     ];
   });
@@ -292,7 +306,7 @@ export function externalBindings(cls: ClassDeclaration): Bindings | undefined {
       name,
       prop,
       wrapped: option('isSignal') === 'true' || model,
-      type: memberType(member, option('isSignal') === 'true' || model),
+      ...typed(member, option('isSignal') === 'true' || model),
       required: option('required') === 'true',
       ...docOf(member),
     });
@@ -301,7 +315,7 @@ export function externalBindings(cls: ClassDeclaration): Bindings | undefined {
     const name = literalType(value) ?? prop;
     if (modelNames.has(name)) continue; // the `xChange` half of a model
     const member = memberOf(cls, prop);
-    result.outputs.push({ name, prop, wrapped: true, type: memberType(member, true), required: false, ...docOf(member) });
+    result.outputs.push({ name, prop, wrapped: true, ...typed(member, true), required: false, ...docOf(member) });
   }
   return result;
 }

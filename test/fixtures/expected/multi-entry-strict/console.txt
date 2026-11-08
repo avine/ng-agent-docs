@@ -1,27 +1,29 @@
 $ ng-agent-docs --root multi-entry --strict --out <out>
 
 --- stdout
-agent-docs: 55 symbols from 8 entry point(s) → <out>
+agent-docs: 58 symbols from 8 entry point(s) → <out>
 --- stderr
 
-18 warning(s):
-  - broken: entry file not found (broken/index.ts)
-  - @fixtures/multi-entry/utils: default export not documented, export it by name
-  - @fixtures/multi-entry/utils: export `missingHelper` could not be resolved, not documented
-  - FxButton.iconPosition: undocumented input
-  - FxButton.toggled: undocumented output
-  - @fixtures/multi-entry/core: namespace re-export `fxMath` (export * as fxMath) not documented, export its members by name
-  - @fixtures/multi-entry/core: export `FxInternals` (ModuleDeclaration) not supported, not documented
-  - FxTextField.hint: undocumented input
-  - FxSelect: `inputs` entry `missingProperty` has no matching class property (typo?)
-  - FxSelect.missingProperty: undocumented input
-  - FxDialogService.closeAll: undocumented method
-  - FxToastService.position: undocumented property
-  - FxHighlightCard: bindings declared by the mixin `withHighlight(CardBase)` are not documented
-  - FxHighlightCard.outlined: undocumented input (declared by CardBase)
-  - FxPopover: host directive FxAnchor has no input `nope` to expose
-  - FxBadge: missing JSDoc description
-  - FxId: missing JSDoc description
-  - FxInitialsPipe: missing JSDoc description
+20 warning(s):
+  - broken/ng-package.json: broken: entry file not found (broken/index.ts)
+  - utils/src/public_api.ts: @fixtures/multi-entry/utils: default export not documented, export it by name
+  - utils/src/public_api.ts: @fixtures/multi-entry/utils: export `missingHelper` could not be resolved, not documented
+  - button/button.ts:85: FxButton.iconPosition: undocumented input
+  - button/button.ts:121: FxButton.toggled: undocumented output
+  - core/index.ts: @fixtures/multi-entry/core: namespace re-export `fxMath` (export * as fxMath) not documented, export its members by name
+  - core/types/option.ts:23: FxGroup: shows the type FxGroupBase (core/internal.ts), which has no page: export it from an entry point
+  - core/types/option.ts:31: @fixtures/multi-entry/core: export `FxInternals` (ModuleDeclaration) not supported, not documented
+  - core/functions.ts:68: toOption: shows the type FxOptionInit (core/internal.ts), which has no page: export it from an entry point
+  - forms/text-field.ts:50: FxTextField.hint: undocumented input
+  - forms/select.ts:14: FxSelect: `inputs` entry `missingProperty` has no matching class property (typo?)
+  - forms/select.ts:14: FxSelect.missingProperty: undocumented input
+  - overlay/dialog.service.ts:38: FxDialogService.closeAll: undocumented method
+  - overlay/toast.service.ts:12: FxToastService.position: undocumented property
+  - overlay/highlight-card.ts:24: FxHighlightCard: bindings declared by the mixin `withHighlight(CardBase)` are not documented
+  - overlay/highlight-card.ts:19: FxHighlightCard.outlined: undocumented input (declared by CardBase)
+  - overlay/popover.ts:40: FxPopover: host directive FxAnchor has no input `nope` to expose
+  - button/badge.ts:4: FxBadge: missing JSDoc description
+  - core/types/size.ts:23: FxId: missing JSDoc description
+  - format/initials.pipe.ts:4: FxInitialsPipe: missing JSDoc description
 ---
 exit code: 1

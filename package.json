@@ -24,7 +24,8 @@
   "scripts": {
     "build": "esbuild ng-agent-docs.mts --bundle --platform=node --format=esm --target=node22 --packages=external --outfile=dist/ng-agent-docs.mjs",
     "typecheck": "tsc -p tsconfig.json",
-    "test": "node test/snapshot.mts",
+    "test": "npm run test:unit && node test/snapshot.mts",
+    "test:unit": "node --test test/unit.mts",
     "test:update": "node test/snapshot.mts --update",
     "test:dist": "npm run build && node test/snapshot.mts --bin dist/ng-agent-docs.mjs",
     "sync-fixtures": "node test/fixtures/sync-single-entry.mts",

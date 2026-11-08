@@ -17,7 +17,7 @@ Import each symbol from the entry point given in its section heading.
 - [FxDateRange](api/FxDateRange.md) `fx-date-range` — Date range picker.
 - [FxDateTimePicker](api/FxDateTimePicker.md) `fx-date-time-picker` — Date and time picker.
 - [FxHighlightCard](api/FxHighlightCard.md) `fx-highlight-card` — Card built on a mixin: inherits `elevation` from CardBase, and gets a warning for the mixin's own bindings.
-- [FxIconButton](api/FxIconButton.md) `fx-icon-button` — Button that only shows an icon. (replaces mat-icon-button) → ⚠️ prefer `fx-button` with an `aria-label` (deprecated)
+- [FxIconButton](api/FxIconButton.md) `fx-icon-button` — Button that only shows an icon. (replaces mat-icon-button) → ⚠️ prefer `fx-button` with an `aria-label`, written over two lines (deprecated)
 - [FxPopover](api/FxPopover.md) `fx-popover` — Popover.
 - [FxSelect](api/FxSelect.md) `fx-select` — Select field.
 - [FxStyledPanel](api/FxStyledPanel.md) `fx-styled-panel` — Panel that extends a directive from another package: its inherited bindings are read from the .d.ts.
@@ -46,6 +46,7 @@ Import each symbol from the entry point given in its section heading.
 - [FxDefaults](api/FxDefaults.md) — Default values applied when an input is not set.
 - [FxDensity](api/FxDensity.md) — Spacing density.
 - [FxEntityId](api/FxEntityId.md) — Unique identifier of a persisted entity.
+- [FxGroup](api/FxGroup.md) — Options shown under a heading.
 - [FxId](api/FxId.md)
 - [FxOption](api/FxOption.md) — One choice in a select or a radio group.
 - [FxPredicate](api/FxPredicate.md) — Predicate on a value.
@@ -66,6 +67,7 @@ Import each symbol from the entry point given in its section heading.
 - [FxDialogRef](api/FxDialogRef.md) — Handle on an open dialog.
 - [FxOverlayBase](api/FxOverlayBase.md) — Base class of the overlays.
 - [fxSize](api/fxSize-2.md) — Default size, as a value.
+- [FxTheme](api/FxTheme.md) — Default theme.
 - [identity](api/identity.md) — Returns its argument.
 - [isEmpty](api/isEmpty.md) — Tells whether a string is empty.
 - [isEven](api/isEven.md) — Tells whether a number is even.
@@ -75,3 +77,4 @@ Import each symbol from the entry point given in its section heading.
 - [negate](api/negate.md) — Negates a number.
 - [noop](api/noop.md) — Does nothing.
 - [round](api/round.md) — Rounds a number.
+- [toOption](api/toOption.md) — Builds an option from a value.

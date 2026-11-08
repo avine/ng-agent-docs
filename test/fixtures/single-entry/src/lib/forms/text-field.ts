@@ -23,7 +23,10 @@ export class FxTextField {
   /** Marks the field as required. Object options: alias, required and transform. */
   @Input({ alias: 'fxRequired', required: true, transform: booleanAttribute }) isRequired = false;
 
-  /** Maximum number of characters. Input on a setter: the type comes from the parameter. */
+  /**
+   * Maximum number of characters. Input on a setter: the type comes from the parameter.
+   * @default 524288
+   */
   @Input() set maxLength(value: number | string) {
     this._maxLength = Number(value);
   }

@@ -25,7 +25,11 @@ export class FxDialogService implements OnDestroy {
   #opened = 0;
   static readonly maxStack = 5;
 
-  /** Opens a component in a dialog. */
+  /**
+   * Opens a component in a dialog.
+   * @param component Component shown in the dialog.
+   * @param data Passed to the component, through `FxDialogRef`.
+   */
   open<R>(component: Type<unknown>, data?: unknown): FxDialogRef<R> {
     this.#opened++;
     return new FxDialogRef<R>();

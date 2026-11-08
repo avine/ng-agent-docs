@@ -18,20 +18,37 @@ import { code, codeBlock, oneLine, summary } from './util.mts';
 // Markdown rendering — the parts shared by every page, and the index.
 // Each page is assembled in describe.mts, which holds its kind-specific sections.
 // =============================================================================
+// A JSDoc tag can span several lines: each one is quoted, or indented to stay in its list item.
+const quote = (s: string) => s.split('\n').map((l) => `> ${l}`.trimEnd()).join('\n');
+const item = (s: string, indent = '') =>
+  `${indent}- ` + s.split('\n').map((l, i) => (i && l.trim() ? `${indent}  ${l}` : l)).join('\n');
+
 /** Top of every symbol page: title, import line(s), warnings, description, @usage and @avoid. */
 export function header(name: string, kind: Kind, doc: Doc, ctx: Context, extra: string[] = []): string[] {
   const lines = [`# ${name} (${kind})`, '', `\`import { ${name} } from '${ctx.ep.importPath}';\``];
   const alsoFrom = ctx.alsoFrom.map((x) => `\`${x.importPath}\`` + (x.name === name ? '' : ` as \`${x.name}\``));
   if (alsoFrom.length) lines.push('', `Also exported from: ${alsoFrom.join(', ')}`);
   lines.push(...extra.flatMap((x) => ['', x]));
-  if (doc.deprecated) lines.push('', `> ⚠️ Deprecated: ${doc.deprecated}`);
-  if (doc.replacedBy) lines.push('', `> ⚠️ For new code, use instead: ${doc.replacedBy}`);
-  if (doc.replaces.length) lines.push('', `Replaces: ${doc.replaces.join(', ')}`);
+  if (doc.deprecated) lines.push('', quote(`⚠️ Deprecated: ${doc.deprecated}`));
+  if (doc.replacedBy) lines.push('', quote(`⚠️ For new code, use instead: ${doc.replacedBy}`));
+  if (doc.replaces.length) lines.push('', `Replaces: ${doc.replaces.map(oneLine).join(', ')}`);
   if (doc.description) lines.push('', doc.description);
-  if (doc.usage.length) lines.push('', '## When to use', ...doc.usage.map((u) => `- ${u}`));
-  if (doc.avoid.length) lines.push('', '## When not to use', ...doc.avoid.map((a) => `- ${a}`));
+  if (doc.usage.length) lines.push('', '## When to use', ...doc.usage.map((u) => item(u)));
+  if (doc.avoid.length) lines.push('', '## When not to use', ...doc.avoid.map((a) => item(a)));
   return lines;
 }
+
+/** Parameters and return value of a function or pipe page, from @param and @returns. */
+export const paramSection = (doc: Doc) => [
+  ...(doc.params.length ? ['', '## Parameters', ...doc.params.map((p) => item(`\`${p.name}\`${p.text ? ` — ${p.text}` : ''}`))] : []),
+  ...(doc.returns ? ['', `Returns: ${doc.returns}`] : []),
+];
+
+/** The same, as sub-items of a method in a list: one line each. */
+export const paramItems = (doc: Doc) => [
+  ...doc.params.map((p) => `  - \`${p.name}\`${p.text ? `: ${oneLine(p.text)}` : ''}`),
+  ...(doc.returns ? [`  - returns: ${oneLine(doc.returns)}`] : []),
+];
 
 // Binding syntax used as the name of each list item: what the agent writes in the template.
 const BINDING_SYNTAX: Record<BindingKind, (name: string) => string> = {
@@ -104,8 +121,8 @@ const indexLine = (e: Entry) =>
   (e.selector ? ` \`${e.selector}\`` : '') +
   (e.pipeName ? ` \`| ${e.pipeName}\`` : '') +
   (e.doc.description ? ` — ${summary(e.doc.description)}` : '') +
-  (e.doc.replaces.length ? ` (replaces ${e.doc.replaces.join(', ')})` : '') +
-  (e.doc.replacedBy ? ` → ⚠️ prefer ${e.doc.replacedBy}` : '') +
+  (e.doc.replaces.length ? ` (replaces ${e.doc.replaces.map(oneLine).join(', ')})` : '') +
+  (e.doc.replacedBy ? ` → ⚠️ prefer ${oneLine(e.doc.replacedBy)}` : '') +
   (e.doc.deprecated ? ' (deprecated)' : '');
 
 const entryPointSection = (ep: EntryPoint, entries: Entry[]) => {
@@ -123,7 +140,7 @@ const entryPointSection = (ep: EntryPoint, entries: Entry[]) => {
 
 /** What index.md needs from the command line. */
 export interface IndexOptions {
-  pkg: { name: string; version: string };
+  pkg: { name: string; version?: string | undefined };
   notes: string[]; // --note lines
   extraDocs: boolean; // --extra-docs given: link its copy
   extraDocsNotes: string[]; // --extra-docs-note lines
@@ -144,7 +161,7 @@ const extraDocsSection = (opts: IndexOptions) =>
 /** Content of index.md. The intro lines are instructions for the agent reading it: add yours with --note. */
 export const renderIndex = (entryPoints: EntryPoint[], entries: Entry[], opts: IndexOptions) =>
   [
-    `# ${opts.pkg.name} ${opts.pkg.version} — Public API`,
+    `# ${opts.pkg.name}${opts.pkg.version ? ` ${opts.pkg.version}` : ''} — Public API`,
     '',
     GENERATED_MARKER,
     '',

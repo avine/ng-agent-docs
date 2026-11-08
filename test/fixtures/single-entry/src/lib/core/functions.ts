@@ -1,4 +1,5 @@
-import type { FxCheck } from './internal';
+import type { FxCheck, FxOptionInit } from './internal';
+import type { FxOption } from './types';
 
 /** Predicate on a value. */
 export type FxPredicate<T> = (value: T) => boolean;
@@ -57,3 +58,13 @@ export const isOdd: FxCheck<number> = (n) => n % 2 !== 0;
 
 /** Negates a number. Typed with an inline function type: already readable, no signature added. */
 export const negate: (n: number) => number = (n) => -n;
+
+/**
+ * Builds an option from a value.
+ * @param value - Value sent to the form.
+ * @param {FxOptionInit} [init] Label and state: `FxOptionInit` has no page, a "shows the type" warning.
+ * @returns The option, ready for `fx-select`.
+ */
+export function toOption<T>(value: T, init?: FxOptionInit): FxOption<T> {
+  return { value, label: init?.label ?? String(value), disabled: init?.disabled };
+}

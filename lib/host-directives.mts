@@ -1,6 +1,6 @@
 import { type ClassDeclaration, Node, type ObjectLiteralExpression } from 'ts-morph';
 import { allBindings, externalBindings } from './bindings.mts';
-import { type BindingKind, type Bindings, type Member, warnings } from './model.mts';
+import { type BindingKind, type Bindings, type Member, warn } from './model.mts';
 import { metadata, ngDecorator, oneLine, packageOf, propOf, str } from './util.mts';
 
 // =============================================================================
@@ -37,7 +37,7 @@ function hostDirectiveBindings(
   const list = propOf(meta, 'hostDirectives');
   if (!list) return { bindings, directives };
   if (!Node.isArrayLiteralExpression(list)) {
-    warnings.push(`${cls.getName()}: \`hostDirectives\` is not an array literal, not documented`);
+    warn(`${cls.getName()}: \`hostDirectives\` is not an array literal, not documented`, list);
     return { bindings, directives };
   }
   // 'name' or 'name: alias' → [name, alias]
@@ -55,13 +55,13 @@ function hostDirectiveBindings(
     const decl = ref ? classOf(ref) : undefined;
     const name = decl?.getName() ?? ref?.getText() ?? oneLine(el.getText());
     if (!decl) {
-      warnings.push(`${cls.getName()}: host directive \`${name}\` not resolved, not documented`);
+      warn(`${cls.getName()}: host directive \`${name}\` not resolved, not documented`, el);
       continue;
     }
     const pkg = decl.getSourceFile().isInNodeModules() ? packageOf(decl.getSourceFile().getFilePath()) : undefined;
     const own = pkg ? externalBindings(decl) : chain.has(decl) ? undefined : fullBindings(decl, chain);
     if (!own) {
-      warnings.push(`${cls.getName()}: bindings of host directive ${name}${pkg ? ` (${pkg})` : ''} could not be read`);
+      warn(`${cls.getName()}: bindings of host directive ${name}${pkg ? ` (${pkg})` : ''} could not be read`, el);
       directives.push({ name, decl, pkg, exposed: [] });
       continue;
     }
@@ -83,7 +83,7 @@ function hostDirectiveBindings(
         expose(model, alias, bindings.models, 'model');
         twoWay.add(change[0]);
       } else if (model) expose(model, alias, bindings.inputs, 'input'); // without its matching output: a plain input
-      else warnings.push(`${cls.getName()}: host directive ${name} has no input \`${publicName}\` to expose`);
+      else warn(`${cls.getName()}: host directive ${name} has no input \`${publicName}\` to expose`, el);
     }
     for (const [publicName, alias] of outputs) {
       if (twoWay.has(publicName)) continue;
@@ -92,7 +92,7 @@ function hostDirectiveBindings(
       if (output) expose(output, alias, bindings.outputs, 'output');
       // The `xChange` half of a model alone: an output, so no default, required flag or transform.
       else if (model) expose({ ...model, default: undefined, required: false, transform: undefined }, alias, bindings.outputs, 'output');
-      else warnings.push(`${cls.getName()}: host directive ${name} has no output \`${publicName}\` to expose`);
+      else warn(`${cls.getName()}: host directive ${name} has no output \`${publicName}\` to expose`, el);
     }
     directives.push({ name, decl, pkg, exposed });
   }

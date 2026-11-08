@@ -3,7 +3,8 @@ import { Component, input } from '@angular/core';
 /**
  * Button that only shows an icon.
  * @replaces mat-icon-button
- * @replacedBy `fx-button` with an `aria-label`
+ * @replacedBy `fx-button` with an `aria-label`,
+ * written over two lines
  * @deprecated Use FxButton with an icon and `aria-label`.
  */
 @Component({ selector: 'fx-icon-button', template: `<ng-content />` })

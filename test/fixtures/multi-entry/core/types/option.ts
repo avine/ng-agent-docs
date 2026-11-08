@@ -1,3 +1,4 @@
+import type { FxGroupBase } from '../internal';
 import { FxSize, FxTone } from './size';
 
 /** One choice in a select or a radio group. */
@@ -17,6 +18,11 @@ export interface FxDefaults {
 
 /** Library-wide defaults. Same name as the interface: both are merged into one file. */
 export const FxDefaults: FxDefaults = { size: 'm', tone: FxTone.Neutral };
+
+/** Options shown under a heading. Extends `FxGroupBase`, which has no page: a "shows the type" warning. */
+export interface FxGroup<T = string> extends FxGroupBase {
+  options: FxOption<T>[];
+}
 
 /** Comparison function used to match options. */
 export type FxCompareWith<T> = (a: T, b: T) => boolean;

@@ -118,6 +118,24 @@ const CASES: Case[] = [
   { name: 'unknown-option', args: ['--root', 'single-entry', '--stict'] },
   { name: 'missing-tsconfig', args: ['--root', 'single-entry', '--tsconfig', 'single-entry/missing.json'] },
   { name: 'no-entry-point', args: ['--root', 'no-entry-point'] },
+  // A broken JSON file of the library: its path in the message, exit code 2. A crash would exit with 3.
+  {
+    name: 'invalid-ng-package',
+    args: ['--root', '{scratch}/lib'],
+    prepare: (scratch) => {
+      copyFixture('no-entry-point', join(scratch, 'lib'));
+      writeFileSync(join(scratch, 'lib', 'ng-package.json'), '{ "lib": { "entryFile": "index.ts" }\n');
+    },
+  },
+  // The package name gives every import path: required.
+  {
+    name: 'package-without-name',
+    args: ['--root', '{scratch}/lib'],
+    prepare: (scratch) => {
+      copyFixture('no-entry-point', join(scratch, 'lib'));
+      writeFileSync(join(scratch, 'lib', 'package.json'), '{ "version": "1.0.0" }\n');
+    },
+  },
   // --extra-docs: a folder of any name, copied to agent-docs/extra-docs/ (every file, the layout kept), and
   // linked at the end of index.md, after the --extra-docs-note lines.
   {

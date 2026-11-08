@@ -6,7 +6,8 @@ Selector: `fx-icon-button`
 
 > ⚠️ Deprecated: Use FxButton with an icon and `aria-label`.
 
-> ⚠️ For new code, use instead: `fx-button` with an `aria-label`
+> ⚠️ For new code, use instead: `fx-button` with an `aria-label`,
+> written over two lines
 
 Replaces: mat-icon-button
 

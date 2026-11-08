@@ -1,0 +1,8 @@
+$ ng-agent-docs --root <scratch>/lib --out <out>
+
+--- stdout
+
+--- stderr
+<scratch>/lib/ng-package.json: not valid JSON (Expected ',' or '}' after property value in JSON at position 37 (line 2 column 1)).
+---
+exit code: 2
