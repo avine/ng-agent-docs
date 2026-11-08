@@ -9,6 +9,7 @@ export * from './tokens';
 export * from './functions';
 export * from './constants';
 export * from './range';
+export { FxOptionStore } from './store';
 // Renamed export: documented as `fxCssClass`, not `buildCssClass`.
 export { buildCssClass as fxCssClass } from './internal';
 // Namespace re-export: not supported, the generator must warn instead of dropping it silently.

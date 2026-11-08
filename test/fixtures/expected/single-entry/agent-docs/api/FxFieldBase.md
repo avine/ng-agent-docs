@@ -19,3 +19,6 @@ Generic: a subclass that sets `T` sees its own type on `value`.
 Each one also works as `[name]` + `(nameChange)`.
 
 - `[(value)]: T | undefined` — Value of the field. Its type comes from the subclass.
+
+## Public methods (via viewChild or exportAs)
+- `focus(): void` — Focuses the field. Inherited: listed on the page of each field.

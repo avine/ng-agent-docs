@@ -5,7 +5,8 @@
  *
  * Edit only multi-entry/, then run this script: single-entry/ is fully regenerated.
  *   - every source file is copied to single-entry/src/lib/, keeping the folder layout;
- *   - secondary ng-package.json files are dropped, so is the broken entry point;
+ *   - secondary ng-packagr configurations (ng-package.json, or package.json with `ngPackage`) are dropped,
+ *     so is the broken entry point;
  *   - imports between entry points (`@fixtures/multi-entry/core`) become relative imports;
  *   - src/public-api.ts re-exports every former entry point.
  */
@@ -41,25 +42,32 @@ interface Secondary {
   slug: string; // 'forms/date'
   entryFile: string; // 'forms/date/index.ts', relative to the library root
 }
-const secondaries: Secondary[] = walk(MULTI)
-  .filter((f) => f.endsWith('ng-package.json') && f !== 'ng-package.json')
-  .map((f) => {
-    const slug = toPosix(dirname(f));
-    const config = readJson<{ lib?: { entryFile?: string } }>(join(MULTI, f));
+type NgPackage = { lib?: { entryFile?: string } };
+// Secondary ng-packagr configurations: an ng-package.json, or a package.json with an `ngPackage` field.
+const configs = walk(MULTI)
+  .map(toPosix)
+  .filter((f) => f.includes('/'))
+  .flatMap((f): { file: string; config: NgPackage }[] => {
+    if (f.endsWith('/ng-package.json')) return [{ file: f, config: readJson<NgPackage>(join(MULTI, f)) }];
+    if (!f.endsWith('/package.json')) return [];
+    const { ngPackage } = readJson<{ ngPackage?: NgPackage }>(join(MULTI, f));
+    return ngPackage ? [{ file: f, config: ngPackage }] : [];
+  });
+const secondaries: Secondary[] = configs
+  .map(({ file, config }) => {
+    const slug = dirname(file);
     return { slug, entryFile: `${slug}/${config.lib?.entryFile ?? 'src/public_api.ts'}` };
   })
   .filter((ep) => existsSync(join(MULTI, ep.entryFile)))
   .sort((a, b) => a.slug.localeCompare(b.slug, 'en'));
 
-const brokenDirs = walk(MULTI)
-  .filter((f) => f.endsWith('ng-package.json') && f !== 'ng-package.json')
-  .map((f) => toPosix(dirname(f)))
-  .filter((slug) => !secondaries.some((ep) => ep.slug === slug));
+const brokenDirs = configs.map(({ file }) => dirname(file)).filter((slug) => !secondaries.some((ep) => ep.slug === slug));
+const configFiles = new Set(configs.map(({ file }) => file));
 
 // --- Copy the sources
 rmSync(SINGLE, { recursive: true, force: true });
 for (const file of walk(MULTI).map(toPosix)) {
-  if (ROOT_FILES.has(file) || file.endsWith('/ng-package.json')) continue;
+  if (ROOT_FILES.has(file) || configFiles.has(file)) continue;
   if (brokenDirs.some((slug) => file.startsWith(`${slug}/`))) continue;
   const target = join(LIB, file);
   mkdirSync(dirname(target), { recursive: true });

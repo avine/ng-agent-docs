@@ -1,26 +1,30 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
-import { type Config, readJson } from './config.mts';
+import { type Config, type NgPackage, readNgPackage } from './config.mts';
 import { type EntryPoint, warn } from './model.mts';
 import { byName, toLf, toPosix } from './util.mts';
 
 // =============================================================================
 // Entry point discovery (ng-packagr)
 // =============================================================================
-// ng-packagr's default when an ng-package.json has no `lib.entryFile`.
+// ng-packagr's default when the configuration has no `lib.entryFile`.
 const DEFAULT_ENTRY_FILE = 'src/public_api.ts';
-// Folders never scanned for ng-package.json files. Absent from a library made by `ng generate library`,
+// Folders never scanned for entry points. Absent from a library made by `ng generate library`,
 // but --root may be the repository itself (standalone ng-packagr). Skipped by name: node_modules.
 // By path: destDir and outDir, as an entry point may have the same folder name.
 const SKIP_DIRS = new Set(['node_modules']);
 
-/** Every folder under `dir` that contains an ng-package.json, the library root included. */
-function findNgPackageDirs(dir: string, skipPaths: Set<string | undefined>): string[] {
-  const found = existsSync(join(dir, 'ng-package.json')) ? [dir] : [];
+/**
+ * Every folder under `dir` with an ng-packagr configuration, the library root included: an ng-package.json,
+ * or a package.json with an `ngPackage` field.
+ */
+function findNgPackages(dir: string, skipPaths: Set<string | undefined>): { dir: string; file: string; config: NgPackage }[] {
+  const own = readNgPackage(dir);
+  const found = own ? [{ dir, ...own }] : [];
   for (const d of readdirSync(dir, { withFileTypes: true })) {
     const child = join(dir, d.name);
     if (d.isDirectory() && !d.name.startsWith('.') && !SKIP_DIRS.has(d.name) && !skipPaths.has(child)) {
-      found.push(...findNgPackageDirs(child, skipPaths));
+      found.push(...findNgPackages(child, skipPaths));
     }
   }
   return found;
@@ -47,12 +51,10 @@ export function entryDescription(source: string): string | undefined {
   return undefined;
 }
 
-/** Turns each ng-package.json into an EntryPoint. Folders whose entry file is missing are reported and skipped. */
+/** Turns each ng-packagr configuration into an EntryPoint. Folders whose entry file is missing are reported and skipped. */
 export function discoverEntryPoints({ libRoot, pkg, destDir, outDir }: Config): EntryPoint[] {
   const entryPoints: EntryPoint[] = [];
-  for (const dir of findNgPackageDirs(libRoot, new Set([destDir, outDir]))) {
-    const ngPackage = join(dir, 'ng-package.json');
-    const config = readJson<{ lib?: { entryFile?: string } }>(ngPackage);
+  for (const { dir, file: ngPackage, config } of findNgPackages(libRoot, new Set([destDir, outDir]))) {
     const file = resolve(dir, config.lib?.entryFile ?? DEFAULT_ENTRY_FILE);
     const slug = toPosix(relative(libRoot, dir));
     if (!existsSync(file)) {

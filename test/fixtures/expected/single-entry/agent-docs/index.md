@@ -12,6 +12,7 @@ Import each symbol from the entry point given in its section heading.
 ### Components
 - [FxBadge](api/FxBadge.md) `fx-badge`
 - [FxButton](api/FxButton.md) `fx-button` — Action button. (replaces mat-button, mat-flat-button)
+- [FxChip](api/FxChip.md) `fx-chip` — Compact element showing a value: a tag, a filter.
 - [FxConfirmDialog](api/FxConfirmDialog.md) — Content of a confirmation dialog, opened with FxDialogService.
 - [FxDatePicker](api/FxDatePicker.md) `fx-date-picker` — Date picker.
 - [FxDateRange](api/FxDateRange.md) `fx-date-range` — Date range picker.
@@ -38,6 +39,7 @@ Import each symbol from the entry point given in its section heading.
 ### Services
 - [FxDialogService](api/FxDialogService.md) — Opens and tracks dialogs.
 - [FxLiveAnnouncer](api/FxLiveAnnouncer.md) — Announces messages to screen readers.
+- [FxOptionStore](api/FxOptionStore.md) — Options of the selects.
 - [FxScrollLock](api/FxScrollLock.md) — Blocks page scrolling while an overlay is open. `@Service()` (Angular 22+): listed with the services.
 - [FxToastService](api/FxToastService.md) — Shows short messages that disappear on their own, at the bottom of the screen and above any open dialog.
 
@@ -73,6 +75,8 @@ Import each symbol from the entry point given in its section heading.
 - [FxDialogRef](api/FxDialogRef.md) — Handle on an open dialog.
 - [FxIdGenerator](api/FxIdGenerator.md) — Generates unique ids.
 - [FxOverlayBase](api/FxOverlayBase.md) — Base class of the overlays.
+- [FxOverlayEvents](api/FxOverlayEvents.md) — Stream of overlay events.
+- [FxPercentRange](api/FxPercentRange.md) — Range of percentages.
 - [FxRange](api/FxRange.md) — Range of numbers, bounds included.
 - [fxSize](api/fxSize-2.md) — Default size, as a value.
 - [FxTheme](api/FxTheme.md) — Default theme.

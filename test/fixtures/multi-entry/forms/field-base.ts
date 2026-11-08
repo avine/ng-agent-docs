@@ -32,4 +32,7 @@ export abstract class FxFieldBase<T = unknown> {
     return this.cssWidth;
   }
   private cssWidth = 'auto';
+
+  /** Focuses the field. Inherited: listed on the page of each field. */
+  focus(): void {}
 }

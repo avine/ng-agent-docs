@@ -1,16 +1,17 @@
 $ ng-agent-docs --root multi-entry --strict --out <out>
 
 --- stdout
-agent-docs: 64 symbols from 8 entry point(s) → <out>
+agent-docs: 68 symbols from 9 entry point(s) → <out>
 --- stderr
 
-23 warning(s):
+26 warning(s):
   - broken/ng-package.json: broken: entry file not found (broken/index.ts)
   - utils/src/public_api.ts: @fixtures/multi-entry/utils: default export not documented, export it by name
   - utils/src/public_api.ts: @fixtures/multi-entry/utils: export `missingHelper` could not be resolved, not documented
   - button/button.ts:85: FxButton.iconPosition: undocumented input
   - button/button.ts:121: FxButton.toggled: undocumented output
   - button/button.module.ts:26: FxButtonModule: exports FxButtonRipple (button/button.module.ts), which has no page: export it from an entry point
+  - core/store.ts:22: FxOptionStore.clear: undocumented method (declared by FxStoreBase)
   - core/index.ts: @fixtures/multi-entry/core: namespace re-export `fxMath` (export * as fxMath) not documented, export its members by name
   - core/types/option.ts:23: FxGroup: shows the type FxGroupBase (core/internal.ts), which has no page: export it from an entry point
   - core/types/option.ts:31: @fixtures/multi-entry/core: export `FxInternals` (ModuleDeclaration) not supported, not documented
@@ -19,6 +20,8 @@ agent-docs: 64 symbols from 8 entry point(s) → <out>
   - forms/text-field.ts:50: FxTextField.hint: undocumented input
   - forms/select.ts:14: FxSelect: `inputs` entry `missingProperty` has no matching class property (typo?)
   - forms/select.ts:14: FxSelect.missingProperty: undocumented input
+  - forms/date/date-picker.ts:19: FxDatePicker: an <ng-content> select (`${…}`) is not a constant, that slot is not documented
+  - forms/date/date-range.ts:4: FxDateRange: templateUrl `./missing-template.html` not found, its content projection slots are not documented
   - overlay/dialog.service.ts:38: FxDialogService.closeAll: undocumented method
   - overlay/dialog.service.ts:26: FxDialogService.maxStack: undocumented static property
   - overlay/toast.service.ts:12: FxToastService.position: undocumented property

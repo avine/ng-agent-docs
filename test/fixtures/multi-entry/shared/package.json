@@ -1,0 +1,4 @@
+{
+  "name": "not-an-entry-point",
+  "description": "A package.json without ngPackage: never an entry point."
+}

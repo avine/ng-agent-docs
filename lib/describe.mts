@@ -2,26 +2,20 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, relative, resolve } from 'node:path';
 import {
   type ClassDeclaration,
-  type GetAccessorDeclaration,
-  type MethodDeclaration,
   Node,
   type ObjectLiteralExpression,
-  type PropertyDeclaration,
-  Scope,
   type Type,
 } from 'ts-morph';
 import { HiddenTypes } from './hidden-types.mts';
 import { fullBindings } from './host-directives.mts';
 import { readDoc } from './jsdoc.mts';
-import { classLink, examples, header, hostDirectiveLine, memberList, paramItems, paramSection } from './markdown.mts';
+import { constructorSection, documentedMethods, memberSections } from './members.mts';
+import { classLink, examples, header, hostDirectiveLine, memberList, paramSection } from './markdown.mts';
 import { type Context, type Doc, type Entry, type Kind, type Library, type Member, NG_DECORATORS, type Owners, warn } from './model.mts';
 import { callSignatures, callSignatureTypes, functionInitializer, readFnDoc, signature, signatureTypes } from './signatures.mts';
 import {
   code,
   codeBlock,
-  firstParagraph,
-  isPublic,
-  isPublicStatic,
   metadata,
   ngDecorator,
   oneLine,
@@ -35,9 +29,6 @@ import {
 // =============================================================================
 // Symbol description — one function per kind of export
 // =============================================================================
-// Lifecycle hooks are public but are not part of the API a consumer calls.
-const LIFECYCLE = /^ng(OnInit|OnChanges|DoCheck|AfterContentInit|AfterContentChecked|AfterViewInit|AfterViewChecked|OnDestroy)$/;
-
 /**
  * Content projection slots of a template, from its <ng-content> elements. A slot without `select` is
  * reported as "default", listed first. A `select` may hold the other kind of quote: "input[type='checkbox']".
@@ -52,15 +43,41 @@ export function slotsOf(template: string): string[] {
   return [...new Set(found)].sort((a, b) => Number(b === 'default') - Number(a === 'default'));
 }
 
-/** Slots of a component: from its inline `template`, or its `templateUrl` file. */
-function slots(cls: ClassDeclaration, meta?: ObjectLiteralExpression): string[] {
-  let html = str(propOf(meta, 'template'));
-  const url = str(propOf(meta, 'templateUrl'));
-  if (!html && url) {
+// Stands for a `${}` substitution whose value is not a constant: a slot whose `select` holds it is unknown.
+const UNKNOWN = '\u{FFFC}';
+
+/**
+ * Text of an inline template. A `${}` substitution is replaced with its value when its type is a string or
+ * number literal (`const PREFIX = 'fx'`), with UNKNOWN otherwise.
+ */
+function templateText(template: Node | undefined): string | undefined {
+  if (!template || !Node.isTemplateExpression(template)) return str(template);
+  const value = (e: Node) => {
+    const t = e.getType();
+    return t.isStringLiteral() || t.isNumberLiteral() ? String(t.getLiteralValue()) : UNKNOWN;
+  };
+  return template.getHead().getLiteralText() + template.getTemplateSpans().map((s) => value(s.getExpression()) + s.getLiteral().getLiteralText()).join('');
+}
+
+/**
+ * Slots of a component: from its inline `template`, or its `templateUrl` file. A missing file, or a
+ * `select` that depends on a value that is not a constant, is reported instead of being left out silently.
+ */
+function slots(name: string, cls: ClassDeclaration, meta?: ObjectLiteralExpression): string[] {
+  const template = propOf(meta, 'template');
+  let html = templateText(template);
+  const urlNode = propOf(meta, 'templateUrl');
+  const url = str(urlNode);
+  if (html === undefined && url) {
     const file = resolve(dirname(cls.getSourceFile().getFilePath()), url);
     if (existsSync(file)) html = readFileSync(file, 'utf8');
+    else warn(`${name}: templateUrl \`${url}\` not found, its content projection slots are not documented`, urlNode);
   }
-  return html ? slotsOf(html) : [];
+  const found = html === undefined ? [] : slotsOf(html);
+  for (const s of found.filter((x) => x.includes(UNKNOWN))) {
+    warn(`${name}: an <ng-content> select (\`${s.replaceAll(UNKNOWN, '${…}')}\`) is not a constant, that slot is not documented`, template);
+  }
+  return found.filter((x) => !x.includes(UNKNOWN));
 }
 
 /** Classes: components, directives, pipes, services, or plain classes, based on their Angular decorator. */
@@ -100,20 +117,11 @@ function describeClass(name: string, kind: Kind, cls: ClassDeclaration, ctx: Con
       );
     }
     if (kind === 'component') {
-      const s = slots(cls, meta);
+      const s = slots(name, cls, meta);
       if (s.length) lines.push('', '## Content projection (ng-content)', ...s.map((x) => `- \`${x}\``));
     }
     // Only methods WITH a JSDoc description: undocumented public methods are usually template handlers.
-    const methods = cls
-      .getMethods()
-      .filter((m) => isPublic(m) && !LIFECYCLE.test(m.getName()))
-      .flatMap((m) => {
-        const fnDoc = readFnDoc(m);
-        if (!fnDoc.description) return [];
-        signatureTypes(m, hidden);
-        const lines = signature(m.getName(), m).map((s) => `- ${code(s)} — ${firstParagraph(fnDoc.description)}`);
-        return [...lines, ...paramItems(fnDoc)];
-      });
+    const methods = documentedMethods(cls, hidden);
     if (methods.length) lines.push('', '## Public methods (via viewChild or exportAs)', ...methods);
 
     // Documentation completeness checks (fail the run in --strict mode). The class description is
@@ -149,77 +157,12 @@ function describeClass(name: string, kind: Kind, cls: ClassDeclaration, ctx: Con
     lines.push(...header(name, kind, doc, ctx, provided));
     if (kind === 'module') lines.push(...moduleExports(name, meta, ctx, lib));
     if (kind === 'class') lines.push(...constructorSection(name, cls, hidden));
-    lines.push(...memberSections(name, cls, hidden));
+    lines.push(...memberSections(name, cls, lib, hidden));
   }
 
   lines.push(...examples(doc));
   hidden.report(name, cls);
   return { name, kind, doc, ep: ctx.ep, page: ctx.page, selector, pipeName, markdown: lines.join('\n') };
-}
-
-/**
- * Public members of a service, NgModule or plain class: instance properties and methods, then static ones
- * (`static forRoot()` of an NgModule, the factory methods of a class). Lifecycle hooks are left out.
- */
-function memberSections(name: string, cls: ClassDeclaration, hidden: HiddenTypes): string[] {
-  type Prop = PropertyDeclaration | GetAccessorDeclaration;
-  const property = (p: Prop, isStatic: boolean) => {
-    // A getter without a setter is read-only for the consumer.
-    const readonly =
-      (Node.isPropertyDeclaration(p) && p.isReadonly()) || (Node.isGetAccessorDeclaration(p) && !p.getSetAccessor());
-    const type = Node.isGetAccessorDeclaration(p) ? p.getReturnType() : p.getType();
-    hidden.type(type, p);
-    const d = readDoc(p).description;
-    if (!d) warn(`${name}.${p.getName()}: undocumented ${isStatic ? 'static ' : ''}property`, p);
-    const text = `${isStatic ? 'static ' : ''}${readonly ? 'readonly ' : ''}${p.getName()}: ${typeText(type, p)}`;
-    return `- ${code(text)}${d ? ` — ${firstParagraph(d)}` : ''}`;
-  };
-  const method = (m: MethodDeclaration, isStatic: boolean) => {
-    const fnDoc = readFnDoc(m);
-    const d = fnDoc.description;
-    if (!d) warn(`${name}.${m.getName()}: undocumented ${isStatic ? 'static ' : ''}method`, m);
-    signatureTypes(m, hidden);
-    const lines = signature(`${isStatic ? 'static ' : ''}${m.getName()}`, m).map((s) => `- ${code(s)}${d ? ` — ${firstParagraph(d)}` : ''}`);
-    return [...lines, ...paramItems(fnDoc)];
-  };
-  const props: Prop[] = [...cls.getProperties(), ...cls.getGetAccessors()];
-  const methods = cls.getMethods().filter((m) => !LIFECYCLE.test(m.getName()));
-
-  // Public parameter properties: `constructor(public readonly http: HttpClient)` declares a property too.
-  // `readonly` alone also makes a public one.
-  const ctorProps = (cls.getConstructors()[0]?.getParameters() ?? [])
-    .filter((p) => p.isParameterProperty() && p.getScope() === Scope.Public)
-    .map((p) => {
-      hidden.type(p.getType(), p);
-      return `- ${code(`${p.isReadonly() ? 'readonly ' : ''}${p.getName()}: ${typeText(p.getType(), p)}`)} — constructor parameter`;
-    });
-  const instance = [...props.filter(isPublic).map((p) => property(p, false)), ...ctorProps];
-  const instanceMethods = methods.filter(isPublic).flatMap((m) => method(m, false));
-  const statics = [
-    ...props.filter(isPublicStatic).map((p) => property(p, true)),
-    ...methods.filter(isPublicStatic).flatMap((m) => method(m, true)),
-  ];
-  return [
-    ...(instance.length ? ['', '## Properties', ...instance] : []),
-    ...(instanceMethods.length ? ['', '## Methods', ...instanceMethods] : []),
-    ...(statics.length ? ['', `## Static members (\`${name}.member\`)`, ...statics] : []),
-  ];
-}
-
-/**
- * Constructor of a plain class, the one way to create it: `new FxDialogRef(id: string)`. A constructor
- * that is not public is noted: the consumer gets instances some other way.
- */
-function constructorSection(name: string, cls: ClassDeclaration, hidden: HiddenTypes): string[] {
-  const ctor = cls.getConstructors()[0];
-  if (!ctor || cls.isAbstract()) return [];
-  if (ctor.getScope() !== Scope.Public) {
-    return ['', '## Constructor', `${ctor.getScope()}: \`new ${name}()\` is not available, instances come from the library.`];
-  }
-  const fnDoc = readFnDoc(ctor);
-  signatureTypes(ctor, hidden);
-  const lines = signature(name, ctor).map((s) => `- ${code(s)}${fnDoc.description ? ` — ${firstParagraph(fnDoc.description)}` : ''}`);
-  return ['', '## Constructor', ...lines, ...paramItems(fnDoc)];
 }
 
 /**

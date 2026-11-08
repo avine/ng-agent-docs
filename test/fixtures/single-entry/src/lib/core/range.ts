@@ -42,3 +42,11 @@ export class FxIdGenerator {
     return `fx-${++this.count}`;
   }
 }
+
+/** Range of percentages. Inherits its constructor, members and static members from FxRange, which has a page. */
+export class FxPercentRange extends FxRange {
+  /** Whether the range stays within 0..100. */
+  get valid(): boolean {
+    return this.min >= 0 && this.max <= 100;
+  }
+}

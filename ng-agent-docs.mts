@@ -67,7 +67,9 @@ function main(config: Config): number {
   checkOutDir(config);
   checkExtraDocs(config);
   const entryPoints = discoverEntryPoints(config);
-  if (!entryPoints.length) fail(`No ng-package.json with an existing entry file found under ${libRoot}`);
+  if (!entryPoints.length) {
+    fail(`No entry point found under ${libRoot}: no ng-package.json (nor package.json with "ngPackage") with an existing entry file.`);
+  }
   if (!existsSync(tsconfigFile)) fail(`${tsconfigFile} not found: pass --tsconfig <file>.`);
 
   // Map every import path to its entry file, so imports between entry points

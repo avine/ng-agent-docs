@@ -80,13 +80,14 @@ Exit codes: `0` done, `1` warnings with `--strict`, `2` usage error (options, or
 
 Everything comes from the library's sources:
 
-- **Entry points**: every `ng-package.json` under `--root`, and its `lib.entryFile`.
+- **Entry points**: every `ng-package.json` under `--root` (or `package.json` with an `ngPackage` field),
+  and its `lib.entryFile`.
 - **Public API**: what each entry file exports. Internal code never appears.
 - **Angular metadata**: selector, inputs and outputs (decorators, signals, `inputs`/`outputs` arrays,
   inherited from base classes, exposed by `hostDirectives`, the base classes' included), `<ng-content>`
   slots, what an input's `transform` accepts, the `exports` of an `NgModule`.
-- **Classes and services**: public properties and methods, static members (`forRoot()`), and the
-  constructor of a plain class.
+- **Classes and services**: public properties and methods, own and inherited from base classes of the
+  library, static members (`forRoot()`), and the constructor of a plain class.
 - **Usage**: JSDoc tags on the class.
 
 | Tag | Use |

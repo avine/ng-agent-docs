@@ -8,7 +8,8 @@ Date picker.
 
 Inherits `label`, `disabled`, `value` (as `Date`) and `placeholder` from FxFieldBase<Date>.
 Uses FxTooltip as a host directive, and exposes its text as `hint` and its toggle event as `tooltipToggle`.
-Its template contains `${}`: no slot is detected (known limitation).
+Its template contains `${}`: a constant (`PREFIX`) is replaced with its value, so `[fxToday]` and
+`[fxFooter]` are listed; the slot selected by `EXTRA_SLOT`, typed `string`, is reported instead.
 
 ## Inputs
 - `[min]: Date | undefined` — Earliest selectable date.
@@ -30,3 +31,10 @@ Each one also works as `[name]` + `(nameChange)`.
 Applied to every instance. Only the bindings listed here can be used in templates.
 
 - [FxTooltip](FxTooltip.md): exposes `[hint]`, `(tooltipToggle)`
+
+## Content projection (ng-content)
+- `[fxToday]`
+- `[fxFooter]`
+
+## Public methods (via viewChild or exportAs)
+- `focus(): void` · inherited from FxFieldBase — Focuses the field. Inherited: listed on the page of each field.

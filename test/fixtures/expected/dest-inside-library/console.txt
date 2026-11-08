@@ -1,14 +1,15 @@
 $ ng-agent-docs --root <scratch>/lib --out <out>
 
 --- stdout
-agent-docs: 64 symbols from 1 entry point(s) → <out>
+agent-docs: 68 symbols from 1 entry point(s) → <out>
 --- stderr
 
-21 warning(s):
+24 warning(s):
   - src/public-api.ts: @fixtures/single-entry: export `missingHelper` could not be resolved, not documented
   - src/lib/button/button.ts:85: FxButton.iconPosition: undocumented input
   - src/lib/button/button.ts:121: FxButton.toggled: undocumented output
   - src/lib/button/button.module.ts:26: FxButtonModule: exports FxButtonRipple (src/lib/button/button.module.ts), which has no page: export it from an entry point
+  - src/lib/core/store.ts:22: FxOptionStore.clear: undocumented method (declared by FxStoreBase)
   - src/public-api.ts: @fixtures/single-entry: namespace re-export `fxMath` (export * as fxMath) not documented, export its members by name
   - src/lib/core/types/option.ts:23: FxGroup: shows the type FxGroupBase (src/lib/core/internal.ts), which has no page: export it from an entry point
   - src/lib/core/types/option.ts:31: @fixtures/single-entry: export `FxInternals` (ModuleDeclaration) not supported, not documented
@@ -17,6 +18,8 @@ agent-docs: 64 symbols from 1 entry point(s) → <out>
   - src/lib/forms/text-field.ts:50: FxTextField.hint: undocumented input
   - src/lib/forms/select.ts:14: FxSelect: `inputs` entry `missingProperty` has no matching class property (typo?)
   - src/lib/forms/select.ts:14: FxSelect.missingProperty: undocumented input
+  - src/lib/forms/date/date-picker.ts:19: FxDatePicker: an <ng-content> select (`${…}`) is not a constant, that slot is not documented
+  - src/lib/forms/date/date-range.ts:4: FxDateRange: templateUrl `./missing-template.html` not found, its content projection slots are not documented
   - src/lib/overlay/dialog.service.ts:38: FxDialogService.closeAll: undocumented method
   - src/lib/overlay/dialog.service.ts:26: FxDialogService.maxStack: undocumented static property
   - src/lib/overlay/toast.service.ts:12: FxToastService.position: undocumented property

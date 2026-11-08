@@ -10,3 +10,4 @@ export * from './scroll-lock.service';
 export * from './styled-panel';
 export * from './highlight-card';
 export * from './popover';
+export * from './overlay-events';

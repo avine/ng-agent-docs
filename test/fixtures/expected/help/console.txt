@@ -7,7 +7,7 @@ Generates agent-docs/ (index.md, one page per symbol) from an Angular library's 
 Run it after the library build: the docs go into the built package.
 
 Options:
-  --root <dir>              Library folder, with its ng-package.json and package.json. Required.
+  --root <dir>              Library folder, with its package.json and ng-package.json. Required.
   --tsconfig <file>         Default: <root>/tsconfig.lib.json.
   --out <dir>               Default: <dest of ng-package.json>/agent-docs. Wiped on every run.
   --note <text>             Line added at the top of the index. Repeatable.

@@ -22,10 +22,18 @@ Import each symbol from the entry point given in its section heading.
 - [FxButtonConfig](api/button/FxButtonConfig.md) — Defaults applied to every button.
 - [FxButtonVariant](api/button/FxButtonVariant.md) — Visual style of a button.
 
+## `@fixtures/multi-entry/chips` — Chips.
+
+### Components
+- [FxChip](api/chips/FxChip.md) `fx-chip` — Compact element showing a value: a tag, a filter.
+
 ## `@fixtures/multi-entry/core` — Shared types, tokens and helpers used by every other entry point.
 
 ### Pipes
 - [DatePipe](api/core/DatePipe.md) — Re-exported from `@angular/common`.
+
+### Services
+- [FxOptionStore](api/core/FxOptionStore.md) — Options of the selects.
 
 ### Types
 - [FxCompareWith](api/core/FxCompareWith.md) — Comparison function used to match options.
@@ -51,6 +59,7 @@ Import each symbol from the entry point given in its section heading.
 - [FX_ROWS](api/core/FX_ROWS.md) — Old default number of rows. (deprecated)
 - [fxCssClass](api/core/fxCssClass.md) — Builds a BEM-like CSS class.
 - [FxIdGenerator](api/core/FxIdGenerator.md) — Generates unique ids.
+- [FxPercentRange](api/core/FxPercentRange.md) — Range of percentages.
 - [FxRange](api/core/FxRange.md) — Range of numbers, bounds included.
 - [fxSize](api/core/fxSize-2.md) — Default size, as a value.
 - [FxTheme](api/core/FxTheme.md) — Default theme.
@@ -109,6 +118,7 @@ Import each symbol from the entry point given in its section heading.
 ### Functions, constants and classes
 - [FxDialogRef](api/overlay/FxDialogRef.md) — Handle on an open dialog.
 - [FxOverlayBase](api/overlay/FxOverlayBase.md) — Base class of the overlays.
+- [FxOverlayEvents](api/overlay/FxOverlayEvents.md) — Stream of overlay events.
 
 ## `@fixtures/multi-entry/utils` — Small helpers.
 

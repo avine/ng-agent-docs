@@ -32,3 +32,6 @@ Applied to every instance. Only the bindings listed here can be used in template
 
 ## Content projection (ng-content)
 - `default`
+
+## Public methods (via viewChild or exportAs)
+- `focus(): void` · inherited from FxFieldBase — Focuses the field. Inherited: listed on the page of each field.

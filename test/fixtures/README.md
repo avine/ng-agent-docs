@@ -5,7 +5,7 @@ one symbol, whose JSDoc says what it tests.
 
 | Folder | Content |
 |---|---|
-| `multi-entry/` | **Source of truth.** Modern layout: empty primary entry point, secondary entry points (one nested, one using ng-packagr's default `src/public_api.ts`, one broken). |
+| `multi-entry/` | **Source of truth.** Modern layout: empty primary entry point, secondary entry points (one nested, one using ng-packagr's default `src/public_api.ts`, one configured in its `package.json`, one broken). |
 | `single-entry/` | Legacy layout: the same sources, everything exported from `src/public-api.ts`. **Generated, do not edit.** |
 | `no-entry-point/` | A library without any `ng-package.json`: the generator must exit with code 2. |
 | `guides/` | Hand-written docs for `--extra-docs`: an `index.md`, a nested page and a non-markdown file. |
@@ -32,12 +32,15 @@ A difference anywhere else means the generator depends on the library layout.
 The snapshot records the current behavior. Fixing one of these shows up as an expected diff.
 
 - Inputs and outputs declared by a mixin are not listed, with a warning (`FxHighlightCard`); the base
-  class passed to the mixin is still read. Inherited public methods are not listed either.
+  class passed to the mixin is still read.
+- Members inherited from a base class of another package are not listed: the page names that class
+  (`FxOverlayEvents`, from rxjs's `Subject`).
 - Host directives are inherited from base classes of the library (`FxDateTimePicker` gets FxDatePicker's),
   not from a base class of another package.
 - An NgModule's `exports` are followed through spreads and constants (`FxButtonModule`); one that cannot
   be resolved is reported. Its `imports`, `declarations` and `providers` are not listed.
-- A template with `${}` substitutions is not scanned for slots (`FxDatePicker`).
+- In a template with `${}` substitutions, a constant is replaced with its value; a `select` that depends on
+  another value is reported, not listed (`FxDatePicker`).
 - An inherited setter input shows its setter's type (`width`), except when that type uses the base
   class's type parameters: then it shows the getter's type, resolved for the subclass (no fixture).
 - Exports that get no page are reported as warnings, never dropped silently: the default export,
