@@ -200,7 +200,9 @@ const summary = (s = '') => {
   const paragraph = firstParagraph(s);
   return /^.*?[.!?](?=\s+\p{Lu})/u.exec(paragraph)?.[0] ?? paragraph;
 };
-const codeBlock = (lang: string, s: string) => '```' + lang + '\n' + s.trim() + '\n```';
+// CRLF (sources checked out on Windows with git's autocrlf) → LF, so the output does not depend on the OS.
+const toLf = (s: string) => s.replace(/\r\n?/g, '\n');
+const codeBlock = (lang: string, s: string) => '```' + lang + '\n' + toLf(s.trim()) + '\n```';
 const toPosix = (p: string) => p.split(sep).join('/');
 // `dir` itself, or anything below it. Works for a root folder too (`/` or `C:\`).
 const isInside = (file: string, dir: string) => file === dir || file.startsWith(dir.endsWith(sep) ? dir : dir + sep);
@@ -424,7 +426,8 @@ function readDoc(node: Node): Doc {
   const jsDoc = host.getJsDocs().at(-1); // the last block is the one directly above the code
   if (!jsDoc) return doc;
 
-  const { description, tags } = parseJsDoc(jsDoc.getInnerText());
+  // With CRLF, the `\r` left at the end of each line would stop parseJsDoc from finding the tags.
+  const { description, tags } = parseJsDoc(toLf(jsDoc.getInnerText()));
   doc.description = description || undefined;
   for (const { name, text } of tags) {
     switch (name) {

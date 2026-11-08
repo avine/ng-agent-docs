@@ -37,7 +37,7 @@ interface Case {
   docs?: true | string[]; // record every generated file, or only these ones (relative to agent-docs/)
   ownOut?: boolean; // the args give --out themselves: the runner does not add its own
   prepare?: (scratch: string) => void;
-  check?: (scratch: string) => string[]; // extra lines recorded in console.txt, after the run
+  check?: (scratch: string, out: string) => string[]; // extra lines recorded in console.txt, after the run
 }
 
 // Copy of a fixture in the scratch folder: --out safety cases point the generator at it, so a broken
@@ -49,6 +49,15 @@ const copyFixture = (fixture: string, to: string) =>
   });
 const stillThere = (scratch: string, file: string) =>
   `${file}: ${existsSync(join(scratch, file)) ? 'still there' : 'DELETED'}`;
+
+// Compares the generated files with those of a case that ran before: its output is still in the runs
+// folder (`out` is <runs>/<case>/agent-docs). Records one line if they are the same, byte for byte.
+const sameOutputAs = (other: string, out: string) => {
+  const differences = compare(join(dirname(dirname(out)), other, 'agent-docs'), out);
+  return differences.length
+    ? [`agent-docs/: differs from ${other}`, ...differences.map((d) => `  ${d}`)]
+    : [`agent-docs/: same files as ${other}, byte for byte`];
+};
 
 // Default --out: a copy of single-entry in <scratch>/lib, built (or not) into the `dest` of its ng-package.json.
 // The repo's node_modules are linked next to it, so its types resolve as in the fixture.
@@ -74,17 +83,30 @@ const generatedIn = (scratch: string, dir: string) => {
   ];
 };
 
+// The --note lines of single-entry, also passed by the cases that must generate the same index.md.
+const NOTES = ['--note', 'Legacy library: in new code, prefer @acme/ui (marked ⚠️).', '--note', 'Second note.'];
+
 const CASES: Case[] = [
   // Secondary entry points, broken entry point, decoy folders: warnings, but exit code 0.
   { name: 'multi-entry', args: ['--root', 'multi-entry'], docs: true },
   { name: 'multi-entry-strict', args: ['--root', 'multi-entry', '--strict'] },
   // Single entry point, two --note lines.
-  {
-    name: 'single-entry',
-    args: ['--root', 'single-entry', '--note', 'Legacy library: in new code, prefer @acme/ui (marked ⚠️).', '--note', 'Second note.'],
-    docs: true,
-  },
+  { name: 'single-entry', args: ['--root', 'single-entry', ...NOTES], docs: true },
   { name: 'single-entry-strict', args: ['--root', 'single-entry', '--strict'] },
+  // Sources with CRLF line endings, as git checks them out on Windows (autocrlf): a copy of single-entry,
+  // converted. The fixtures themselves are always LF (.gitattributes). Must generate the same files.
+  {
+    name: 'crlf-sources',
+    args: ['--root', '{scratch}/lib', ...NOTES],
+    prepare: (scratch) => {
+      libWithDest(scratch);
+      for (const file of walk(join(scratch, 'lib'))) {
+        const path = join(scratch, 'lib', file);
+        writeFileSync(path, readFileSync(path, 'utf8').replace(/\r?\n/g, '\r\n'));
+      }
+    },
+    check: (_scratch, out) => sameOutputAs('single-entry', out),
+  },
   // tsconfig.alt.json turns `strict` off: optional types lose their `| undefined`, proving the option is used.
   {
     name: 'custom-tsconfig',
@@ -288,7 +310,7 @@ function run(c: Case, runs: string, actual: string): void {
     normalize(result.stderr),
     '---',
     `exit code: ${result.status}`,
-    ...(c.check?.(scratch) ?? []),
+    ...(c.check?.(scratch, out) ?? []),
     '',
   ].join('\n');
 
