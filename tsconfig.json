@@ -1,7 +1,7 @@
 {
   // Type-checks the generator and the test scripts. Node runs the .mts files directly (≥ 22.18):
-  // no build is needed to work on them. The published build uses tsconfig.build.json.
-  "include": ["ng-agent-docs.mts", "test/*.mts", "test/fixtures/*.mts"],
+  // no build is needed to work on them. The published file is bundled by esbuild (`npm run build`).
+  "include": ["ng-agent-docs.mts", "lib/*.mts", "test/*.mts", "test/fixtures/*.mts"],
   "compilerOptions": {
     "noEmit": true,
     "module": "nodenext",

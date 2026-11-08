@@ -139,16 +139,17 @@ The `exports` field that ng-packagr writes only limits imports: agents can still
 
 ## Development
 
-The command is written in TypeScript (`ng-agent-docs.mts`) and Node runs it directly (22.18 or later),
-without a build. The published package contains `dist/ng-agent-docs.mjs` instead, built by `prepack`:
-Node does not strip types from files under `node_modules`.
+The command is written in TypeScript: `ng-agent-docs.mts` (the main flow) and its modules in `lib/`.
+Node runs it directly (22.18 or later), without a build. The published package contains a single file
+instead, `dist/ng-agent-docs.mjs`, bundled by esbuild in `prepack`: Node does not strip types from files
+under `node_modules`.
 
 ```bash
 npm install
 npm run typecheck     # strict type check of the command and the test scripts
 npm test              # snapshot test on the fixtures (CI)
 npm run test:update   # accept an intended change in the output
-npm run test:dist     # same snapshot test, on the built dist/ng-agent-docs.mjs
+npm run test:dist     # same snapshot test, on the bundled dist/ng-agent-docs.mjs
 ```
 
 Test libraries and expected output are in [test/fixtures/](test/fixtures/README.md).

@@ -1,0 +1,89 @@
+import type { ClassDeclaration, Node } from 'ts-morph';
+
+// =============================================================================
+// Data model
+// =============================================================================
+export type Kind = 'component' | 'directive' | 'pipe' | 'service' | 'class' | 'interface' | 'type' | 'enum' | 'function' | 'const';
+
+/** One ng-packagr entry point: what consumers import, and the file that defines its public API. */
+export interface EntryPoint {
+  importPath: string; // '@acme/ui' (primary) or '@acme/ui/forms' (secondary)
+  slug: string; // folder relative to the library root: '' (primary) or 'forms'
+  dir: string;
+  file: string; // absolute path of the entry file
+  description?: string | undefined; // from @packageDocumentation
+}
+
+/** Content of a symbol's JSDoc block, including our custom tags. */
+export interface Doc {
+  description?: string | undefined;
+  usage: string[]; // when to use it (one @usage tag per case)
+  avoid: string[]; // when NOT to use it, and what to use instead
+  replacedBy?: string | undefined; // newer equivalent to prefer in new code (legacy library)
+  replaces: string[]; // older elements this one replaces, e.g. mat-form-field (modern library)
+  deprecated?: string | undefined;
+  examples: string[];
+}
+
+/** One template binding: input, model or output. */
+export interface Member {
+  name: string; // name used in templates (the alias, if any)
+  type: string; // type of the value, as the consumer sees it
+  required: boolean;
+  default?: string | undefined;
+  transform?: string | undefined; // e.g. booleanAttribute: the input also accepts what it converts
+  description?: string | undefined;
+  deprecated?: string | undefined;
+  inheritedFrom?: ClassDeclaration | undefined; // base class that declares it, for an inherited binding
+  fromHostDirective?: ClassDeclaration | undefined; // host directive that provides it, for an exposed binding
+  // Internal, not rendered: used to merge and re-type inherited bindings.
+  prop: string; // class member name (the template name may be an alias)
+  wrapped: boolean; // `type` was unwrapped from InputSignal<T>, ModelSignal<T>, EventEmitter<T>…
+}
+
+/** Every template binding of a class, by kind. */
+export interface Bindings {
+  inputs: Member[];
+  outputs: Member[];
+  models: Member[];
+}
+
+/** Where a symbol is documented, and how it is imported. */
+export interface Context {
+  ep: EntryPoint; // the entry point that owns the symbol
+  alsoFrom: { importPath: string; name: string }[]; // its other exports: by other entry points, or renamed
+  page: string; // its page, relative to OUT_DIR
+}
+
+/** One documented symbol, ready to be written to disk and listed in the index. */
+export interface Entry {
+  name: string;
+  kind: Kind;
+  doc: Doc;
+  ep: EntryPoint;
+  page: string; // relative to OUT_DIR
+  selector?: string | undefined;
+  pipeName?: string | undefined;
+  markdown: string;
+}
+
+/**
+ * Every documented declaration, with its name and page. Built before any page is described: a page
+ * links to the page of a host directive, and knows which classes have one.
+ */
+export type Owners = ReadonlyMap<Node, { name: string; ctx: Context }>;
+
+// =============================================================================
+// Constants
+// =============================================================================
+// Angular decorator → kind of symbol. Classes without one of these are documented as plain classes.
+export const NG_DECORATORS: Record<string, Kind> = {
+  Component: 'component',
+  Directive: 'directive',
+  Pipe: 'pipe',
+  Injectable: 'service',
+  Service: 'service', // Angular 22+
+};
+
+// Missing documentation found during the run. Printed at the end; fails the run in --strict mode.
+export const warnings: string[] = [];
