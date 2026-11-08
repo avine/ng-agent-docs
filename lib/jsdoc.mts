@@ -56,7 +56,8 @@ function parseJsDoc(text: string) {
 
 /**
  * Reads the JSDoc block closest to a node and extracts the description and our custom tags.
- * To support a new tag: add a field to `Doc`, its name to DOC_TAGS, a `case` here, and render it in `header()`.
+ * To support a new tag: add a field to `Doc` (model.mts), its name to DOC_TAGS, a `case` here, and render it
+ * in `header()` (markdown.mts).
  */
 export function readDoc(node: Node): Doc {
   const doc: Doc = { usage: [], avoid: [], replaces: [], examples: [] };

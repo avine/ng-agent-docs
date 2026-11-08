@@ -11,15 +11,14 @@ import {
   type Type,
   TypeFormatFlags,
 } from 'ts-morph';
-import { type EntryPoint, NG_DECORATORS } from './model.mts';
+import { NG_DECORATORS } from './model.mts';
 
 // =============================================================================
 // Generic helpers
 // =============================================================================
-export const typeText = (t: Type, at: Node) => t.getText(at, TYPE_FORMAT);
-
 // Print types as the consumer sees them: keep alias names (ButtonVariant, not the union), never truncate.
 export const TYPE_FORMAT = TypeFormatFlags.UseAliasDefinedOutsideCurrentScope | TypeFormatFlags.NoTruncation;
+export const typeText = (t: Type, at: Node) => t.getText(at, TYPE_FORMAT);
 
 // Collapse a multi-line text (a default value, a description) to one line, for a list item.
 export const oneLine = (s = '') => s.replace(/\s+/g, ' ').trim();
@@ -80,10 +79,6 @@ export const ngDecorator = (cls: ClassDeclaration) => cls.getDecorators().find((
 export const isPublic = (m: PropertyDeclaration | MethodDeclaration | GetAccessorDeclaration) =>
   m.getScope() === Scope.Public && !m.isStatic() && !m.getName().startsWith('#');
 
-// Markdown file of a symbol, relative to OUT_DIR: api/<entry slug>/<Symbol>.md
-// (unless its name differs from another one only by case: see `pageOf`).
-export const docPath = (e: { name: string; ep: EntryPoint }) => ['api', e.ep.slug, `${e.name}.md`].filter(Boolean).join('/');
-
-/** Package that declares a file of node_modules: `.../node_modules/@angular/core/index.d.ts` → `@angular/core`. */
+// Package that declares a file of node_modules: `.../node_modules/@angular/core/index.d.ts` → `@angular/core`.
 export const packageOf = (file: string) =>
   [...toPosix(file).matchAll(/\/node_modules\/((?:@[^/]+\/)?[^/]+)\//g)].at(-1)?.[1] ?? 'another package';

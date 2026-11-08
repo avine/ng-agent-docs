@@ -1,11 +1,22 @@
 import { posix } from 'node:path';
-import { EXTRA_DOCS, EXTRA_DOCS_DIR, EXTRA_DOCS_NOTES, GENERATED_MARKER, NOTES, PKG } from './config.mts';
 import type { HostDirective } from './host-directives.mts';
-import type { Context, Doc, Entry, EntryPoint, Kind, Member, Owners } from './model.mts';
+import {
+  type BindingKind,
+  type Context,
+  type Doc,
+  type Entry,
+  type EntryPoint,
+  EXTRA_DOCS_DIR,
+  GENERATED_MARKER,
+  type Kind,
+  type Member,
+  type Owners,
+} from './model.mts';
 import { code, codeBlock, oneLine, summary } from './util.mts';
 
 // =============================================================================
-// Markdown rendering — change the wording or layout of the generated files here
+// Markdown rendering — the parts shared by every page, and the index.
+// Each page is assembled in describe.mts, which holds its kind-specific sections.
 // =============================================================================
 /** Top of every symbol page: title, import line(s), warnings, description, @usage and @avoid. */
 export function header(name: string, kind: Kind, doc: Doc, ctx: Context, extra: string[] = []): string[] {
@@ -23,10 +34,10 @@ export function header(name: string, kind: Kind, doc: Doc, ctx: Context, extra: 
 }
 
 // Binding syntax used as the name of each list item: what the agent writes in the template.
-export const BINDING_SYNTAX = {
-  input: (name: string) => `[${name}]`,
-  model: (name: string) => `[(${name})]`,
-  output: (name: string) => `(${name})`,
+const BINDING_SYNTAX: Record<BindingKind, (name: string) => string> = {
+  input: (name) => `[${name}]`,
+  model: (name) => `[(${name})]`,
+  output: (name) => `(${name})`,
 };
 
 /**
@@ -37,7 +48,7 @@ export const BINDING_SYNTAX = {
  *   - `[kind]: Variant | undefined` ⚠️ deprecated: Use `variant`. — Old name of `variant`.
  * Missing facts are left out.
  */
-export function memberList(title: string, binding: keyof typeof BINDING_SYNTAX, list: Member[], note?: string): string[] {
+export function memberList(title: string, binding: BindingKind, list: Member[], note?: string): string[] {
   if (!list.length) return [];
   const items = list.map(
     (m) =>
@@ -65,7 +76,8 @@ export function hostDirectiveLine(d: HostDirective, fromPage: string, owners: Ow
     : target
       ? `[${d.name}](${posix.relative(posix.dirname(fromPage), target)})`
       : `${d.name} (not exported by the library)`;
-  return `- ${label}: exposes ${d.exposed.length ? d.exposed.map(code).join(', ') : 'nothing'}`;
+  const exposed = d.exposed.map((x) => code(BINDING_SYNTAX[x.binding](x.name)));
+  return `- ${label}: exposes ${exposed.length ? exposed.join(', ') : 'nothing'}`;
 }
 
 // An @example without a code fence is assumed to be an HTML template snippet.
@@ -109,27 +121,36 @@ const entryPointSection = (ep: EntryPoint, entries: Entry[]) => {
   ];
 };
 
+/** What index.md needs from the command line. */
+export interface IndexOptions {
+  pkg: { name: string; version: string };
+  notes: string[]; // --note lines
+  extraDocs: boolean; // --extra-docs given: link its copy
+  extraDocsNotes: string[]; // --extra-docs-note lines
+}
+
 // Last section: link to the extra docs, after the --extra-docs-note lines, if any.
-const extraDocsSection = EXTRA_DOCS
-  ? [
-      '',
-      '## Additional documentation',
-      '',
-      ...(EXTRA_DOCS_NOTES.length ? [...EXTRA_DOCS_NOTES, ''] : []),
-      `[${EXTRA_DOCS_DIR}/index.md](${EXTRA_DOCS_DIR}/index.md)`,
-    ]
-  : [];
+const extraDocsSection = (opts: IndexOptions) =>
+  opts.extraDocs
+    ? [
+        '',
+        '## Additional documentation',
+        '',
+        ...(opts.extraDocsNotes.length ? [...opts.extraDocsNotes, ''] : []),
+        `[${EXTRA_DOCS_DIR}/index.md](${EXTRA_DOCS_DIR}/index.md)`,
+      ]
+    : [];
 
 /** Content of index.md. The intro lines are instructions for the agent reading it: add yours with --note. */
-export const renderIndex = (entryPoints: EntryPoint[], entries: Entry[]) =>
+export const renderIndex = (entryPoints: EntryPoint[], entries: Entry[], opts: IndexOptions) =>
   [
-    `# ${PKG.name} ${PKG.version} — Public API`,
+    `# ${opts.pkg.name} ${opts.pkg.version} — Public API`,
     '',
     GENERATED_MARKER,
     '',
-    ...NOTES,
+    ...opts.notes,
     'Read this index, then only the relevant `api/.../<Symbol>.md` file.',
     'Import each symbol from the entry point given in its section heading.',
     ...entryPoints.flatMap((ep) => entryPointSection(ep, entries)),
-    ...extraDocsSection,
+    ...extraDocsSection(opts),
   ].join('\n');

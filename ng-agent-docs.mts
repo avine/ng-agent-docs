@@ -19,7 +19,7 @@
  *     signatures.mts      function and method signatures
  *     bindings.mts        inputs, outputs and models, own and inherited
  *     host-directives.mts bindings exposed by host directives
- *   markdown.mts        layout and wording of the pages and of the index
+ *     markdown.mts        parts shared by every page (header, binding lists, examples), and the index
  *   model.mts, util.mts shared types, warnings, small helpers
  */
 import { cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
@@ -29,19 +29,21 @@ import {
   checkExtraDocs,
   checkOutDir,
   EXTRA_DOCS,
-  EXTRA_DOCS_DIR,
+  EXTRA_DOCS_NOTES,
   fail,
   LIB_ROOT,
+  NOTES,
   OS_FILES,
   OUT_DIR,
+  PKG,
   STRICT,
   TSCONFIG,
 } from './lib/config.mts';
 import { describe } from './lib/describe.mts';
 import { discoverEntryPoints } from './lib/entry-points.mts';
 import { renderIndex } from './lib/markdown.mts';
-import { type Context, type Entry, type EntryPoint, type Owners, warnings } from './lib/model.mts';
-import { byName, docPath, isInside } from './lib/util.mts';
+import { type Context, type Entry, type EntryPoint, EXTRA_DOCS_DIR, type Owners, warnings } from './lib/model.mts';
+import { byName, isInside } from './lib/util.mts';
 
 // =============================================================================
 // Main 1: load the library
@@ -107,9 +109,11 @@ const owned = [...exported].map(([decl, exports]) => {
   return { decl, name, ep: owner, alsoFrom };
 });
 
-// Page of each symbol, relative to OUT_DIR. Names that differ only by case (`FxSize`, `fxSize`) would
-// share one file on a case-insensitive file system (macOS, Windows), where the package may be unpacked:
-// the first in code point order keeps `<Name>.md`, the next ones get `<Name>-2.md`, `-3`… (no name has a `-`).
+// Page of each symbol, relative to OUT_DIR: api/<entry slug>/<Symbol>.md. Names that differ only by case
+// (`FxSize`, `fxSize`) would share one file on a case-insensitive file system (macOS, Windows), where the
+// package may be unpacked: the first in code point order keeps `<Name>.md`, the next ones get `<Name>-2.md`,
+// `-3`… (no name has a `-`).
+const docPath = (e: { name: string; ep: EntryPoint }) => ['api', e.ep.slug, `${e.name}.md`].filter(Boolean).join('/');
 const pageOf = new Map<string, string>(); // docPath → page
 const sharing = new Map<string, number>(); // lowercased docPath → number of pages using it so far
 for (const path of [...new Set(owned.map(docPath))].sort()) {
@@ -167,7 +171,13 @@ if (EXTRA_DOCS) {
 // =============================================================================
 // Main 4: write the index — one section per entry point, then one sub-section per kind
 // =============================================================================
-writeFileSync(join(OUT_DIR, 'index.md'), renderIndex(entryPoints, entries) + '\n');
+const index = renderIndex(entryPoints, entries, {
+  pkg: PKG,
+  notes: NOTES,
+  extraDocs: !!EXTRA_DOCS,
+  extraDocsNotes: EXTRA_DOCS_NOTES,
+});
+writeFileSync(join(OUT_DIR, 'index.md'), index + '\n');
 
 // =============================================================================
 // Report

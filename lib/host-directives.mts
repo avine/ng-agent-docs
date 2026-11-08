@@ -1,7 +1,6 @@
 import { type ClassDeclaration, Node, type ObjectLiteralExpression } from 'ts-morph';
 import { allBindings, externalBindings } from './bindings.mts';
-import { BINDING_SYNTAX } from './markdown.mts';
-import { type Bindings, type Member, warnings } from './model.mts';
+import { type BindingKind, type Bindings, type Member, warnings } from './model.mts';
 import { metadata, ngDecorator, oneLine, packageOf, propOf, str } from './util.mts';
 
 // =============================================================================
@@ -12,7 +11,7 @@ export interface HostDirective {
   name: string;
   decl?: ClassDeclaration | undefined;
   pkg?: string | undefined; // set when the directive comes from another package
-  exposed: string[]; // template syntax of what the host exposes: `[hint]`, `(tooltipToggle)`, `[(expanded)]`
+  exposed: { binding: BindingKind; name: string }[]; // what the host exposes, under its name on the host
 }
 
 /** Class a `hostDirectives` entry refers to: `FxTooltip`, or `directive: FxTooltip` in the object form. */
@@ -68,11 +67,11 @@ function hostDirectiveBindings(
     }
     const inputs = mappings(Node.isObjectLiteralExpression(el) ? propOf(el, 'inputs') : undefined);
     const outputs = mappings(Node.isObjectLiteralExpression(el) ? propOf(el, 'outputs') : undefined);
-    const exposed: string[] = [];
+    const exposed: HostDirective['exposed'] = [];
     // Exposed on the host: renamed, marked with its directive. Its origin on the directive side no longer matters.
-    const expose = (m: Member, alias: string, list: Member[], syntax: keyof typeof BINDING_SYNTAX) => {
+    const expose = (m: Member, alias: string, list: Member[], binding: BindingKind) => {
       list.push({ ...m, name: alias, prop: `${name}.${m.prop}`, inheritedFrom: undefined, fromHostDirective: decl });
-      exposed.push(BINDING_SYNTAX[syntax](alias));
+      exposed.push({ binding, name: alias });
     };
     const twoWay = new Set<string>(); // `xChange` outputs already exposed as the second half of a model
     for (const [publicName, alias] of inputs) {
