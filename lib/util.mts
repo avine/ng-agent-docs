@@ -72,12 +72,16 @@ export const metadata = (d?: Decorator) => {
   return arg && Node.isObjectLiteralExpression(arg) ? arg : undefined;
 };
 
-// The Angular decorator of a class (@Component, @Directive, @Pipe, @Injectable, @Service), if any.
+// The Angular decorator of a class (@Component, @Directive, @Pipe, @Injectable, @Service, @NgModule), if any.
 export const ngDecorator = (cls: ClassDeclaration) => cls.getDecorators().find((d) => d.getName() in NG_DECORATORS);
 
 // Public, non-static, not #private. Used to filter members of services and classes.
 export const isPublic = (m: PropertyDeclaration | MethodDeclaration | GetAccessorDeclaration) =>
   m.getScope() === Scope.Public && !m.isStatic() && !m.getName().startsWith('#');
+
+// Public and static, e.g. `static forRoot()` of an NgModule, or a factory method of a plain class.
+export const isPublicStatic = (m: PropertyDeclaration | MethodDeclaration | GetAccessorDeclaration) =>
+  m.getScope() === Scope.Public && m.isStatic() && !m.getName().startsWith('#');
 
 // Package that declares a file of node_modules: `.../node_modules/@angular/core/index.d.ts` → `@angular/core`.
 export const packageOf = (file: string) =>

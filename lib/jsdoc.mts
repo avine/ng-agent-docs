@@ -86,7 +86,7 @@ export function readDoc(node: Node): Doc {
       case 'avoid': doc.avoid.push(text); break;
       case 'replacedBy': doc.replacedBy = text; break;
       case 'replaces': doc.replaces.push(text); break;
-      case 'deprecated': doc.deprecated = text || 'yes'; break;
+      case 'deprecated': doc.deprecated = text; break;
       case 'example': doc.examples.push(text); break;
       case 'param': {
         const param = parseParam(text);

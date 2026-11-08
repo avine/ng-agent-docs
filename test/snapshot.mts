@@ -115,6 +115,8 @@ const CASES: Case[] = [
   },
   // Usage errors: exit code 2, never 1 (incomplete docs in --strict mode), and no stack trace.
   { name: 'missing-root', args: [] },
+  // --help needs no other option. --version is not recorded: it changes with each release.
+  { name: 'help', args: ['--help'], ownOut: true },
   { name: 'unknown-option', args: ['--root', 'single-entry', '--stict'] },
   { name: 'missing-tsconfig', args: ['--root', 'single-entry', '--tsconfig', 'single-entry/missing.json'] },
   { name: 'no-entry-point', args: ['--root', 'no-entry-point'] },

@@ -44,7 +44,9 @@ import { byName, isInside, toPosix } from './lib/util.mts';
 
 // Exit codes: 0 done, 1 warnings in --strict mode, 2 usage error, 3 unexpected error (a bug, or the file system).
 try {
-  process.exitCode = main(readConfig(process.argv.slice(2)));
+  const config = readConfig(process.argv.slice(2));
+  if ('print' in config) console.log(config.print); // --help, --version
+  else process.exitCode = main(config);
 } catch (e) {
   if (e instanceof UsageError) {
     console.error(e.message);

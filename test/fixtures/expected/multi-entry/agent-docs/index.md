@@ -15,7 +15,11 @@ Import each symbol from the entry point given in its section heading.
 ### Directives
 - [FxButtonGroup](api/button/FxButtonGroup.md) `[fxButtonGroup]` — Groups buttons and manages a single selection.
 
+### NgModules
+- [FxButtonModule](api/button/FxButtonModule.md) — The buttons as an NgModule, for applications still built on modules.
+
 ### Types
+- [FxButtonConfig](api/button/FxButtonConfig.md) — Defaults applied to every button.
 - [FxButtonVariant](api/button/FxButtonVariant.md) — Visual style of a button.
 
 ## `@fixtures/multi-entry/core` — Shared types, tokens and helpers used by every other entry point.
@@ -44,7 +48,10 @@ Import each symbol from the entry point given in its section heading.
 - [FX_BREAKPOINTS](api/core/FX_BREAKPOINTS.md) — Breakpoints, in pixels.
 - [FX_DEFAULTS](api/core/FX_DEFAULTS.md) — Overrides the library defaults for a part of the app.
 - [FX_PAGE_SIZE](api/core/FX_PAGE_SIZE.md) — Default number of rows per page.
+- [FX_ROWS](api/core/FX_ROWS.md) — Old default number of rows. (deprecated)
 - [fxCssClass](api/core/fxCssClass.md) — Builds a BEM-like CSS class.
+- [FxIdGenerator](api/core/FxIdGenerator.md) — Generates unique ids.
+- [FxRange](api/core/FxRange.md) — Range of numbers, bounds included.
 - [fxSize](api/core/fxSize-2.md) — Default size, as a value.
 - [FxTheme](api/core/FxTheme.md) — Default theme.
 - [identity](api/core/identity.md) — Returns its argument.
@@ -63,6 +70,7 @@ Import each symbol from the entry point given in its section heading.
 ### Pipes
 - [FxAmountPipe](api/format/FxAmountPipe.md) `| fxAmount` — Formats a number as an amount with its currency.
 - [FxInitialsPipe](api/format/FxInitialsPipe.md) `| fxInitials`
+- [FxUpperPipe](api/format/FxUpperPipe.md) — Upper-cases a text.
 
 ## `@fixtures/multi-entry/forms`
 

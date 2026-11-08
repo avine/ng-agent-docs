@@ -35,8 +35,35 @@ export interface Config {
   outDir: string; // ⚠️ wiped on every run
 }
 
-/** Reads the command line. Throws a UsageError when it, or the library layout, is wrong. */
-export function readConfig(argv: string[]): Config {
+const HELP = `Usage: ng-agent-docs --root <library folder> [options]
+
+Generates agent-docs/ (index.md, one page per symbol) from an Angular library's sources and JSDoc.
+Run it after the library build: the docs go into the built package.
+
+Options:
+  --root <dir>              Library folder, with its ng-package.json and package.json. Required.
+  --tsconfig <file>         Default: <root>/tsconfig.lib.json.
+  --out <dir>               Default: <dest of ng-package.json>/agent-docs. Wiped on every run.
+  --note <text>             Line added at the top of the index. Repeatable.
+  --extra-docs <dir>        Hand-written docs with an index.md, copied to agent-docs/extra-docs/.
+  --extra-docs-note <text>  Line shown above the link to the extra docs. Repeatable.
+  --strict                  Exit code 1 when documentation is missing.
+  -h, --help                Show this help.
+  -v, --version             Show the version.
+
+Exit codes: 0 done, 1 warnings with --strict, 2 usage error, 3 unexpected error.
+Options, JSDoc tags and examples: README.md of the ng-agent-docs package.`;
+
+/** Version of ng-agent-docs, from its package.json: one folder up from lib/ in the sources, from dist/ once bundled. */
+function ownVersion(): string {
+  return readJson<{ version?: string }>(join(import.meta.dirname, '..', 'package.json')).version ?? 'unknown';
+}
+
+/**
+ * Reads the command line. Throws a UsageError when it, or the library layout, is wrong. `--help` and
+ * `--version` give the text to print instead.
+ */
+export function readConfig(argv: string[]): Config | { print: string } {
   const { values: args } = (() => {
     try {
       return parseArgs({
@@ -49,13 +76,17 @@ export function readConfig(argv: string[]): Config {
           'extra-docs': { type: 'string' },
           'extra-docs-note': { type: 'string', multiple: true, default: [] },
           strict: { type: 'boolean', default: false },
+          help: { type: 'boolean', short: 'h', default: false },
+          version: { type: 'boolean', short: 'v', default: false },
         },
       });
     } catch (e) {
       return fail((e as Error).message); // unknown option, missing value…
     }
   })();
-  if (!args.root) fail('Missing --root <library folder>, e.g. --root projects/my-lib');
+  if (args.help) return { print: HELP };
+  if (args.version) return { print: ownVersion() };
+  if (!args.root) fail('Missing --root <library folder>, e.g. --root projects/my-lib (see --help)');
   const libRoot = resolve(args.root);
   const extraDocs = args['extra-docs'] ? resolve(args['extra-docs']) : undefined;
   if (args['extra-docs-note'].length && !extraDocs) fail('--extra-docs-note needs --extra-docs <folder>.');

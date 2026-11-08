@@ -33,6 +33,10 @@ The snapshot records the current behavior. Fixing one of these shows up as an ex
 
 - Inputs and outputs declared by a mixin are not listed, with a warning (`FxHighlightCard`); the base
   class passed to the mixin is still read. Inherited public methods are not listed either.
+- Host directives are inherited from base classes of the library (`FxDateTimePicker` gets FxDatePicker's),
+  not from a base class of another package.
+- An NgModule's `exports` are followed through spreads and constants (`FxButtonModule`); one that cannot
+  be resolved is reported. Its `imports`, `declarations` and `providers` are not listed.
 - A template with `${}` substitutions is not scanned for slots (`FxDatePicker`).
 - An inherited setter input shows its setter's type (`width`), except when that type uses the base
   class's type parameters: then it shows the getter's type, resolved for the subclass (no fixture).

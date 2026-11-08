@@ -1,21 +1,24 @@
 $ ng-agent-docs --root single-entry --note "Legacy library: in new code, prefer @acme/ui (marked ⚠️)." --note "Second note." --out <out>
 
 --- stdout
-agent-docs: 58 symbols from 1 entry point(s) → <out>
+agent-docs: 64 symbols from 1 entry point(s) → <out>
 --- stderr
 
-18 warning(s):
+21 warning(s):
   - src/public-api.ts: @fixtures/single-entry: export `missingHelper` could not be resolved, not documented
   - src/lib/button/button.ts:85: FxButton.iconPosition: undocumented input
   - src/lib/button/button.ts:121: FxButton.toggled: undocumented output
+  - src/lib/button/button.module.ts:26: FxButtonModule: exports FxButtonRipple (src/lib/button/button.module.ts), which has no page: export it from an entry point
   - src/public-api.ts: @fixtures/single-entry: namespace re-export `fxMath` (export * as fxMath) not documented, export its members by name
   - src/lib/core/types/option.ts:23: FxGroup: shows the type FxGroupBase (src/lib/core/internal.ts), which has no page: export it from an entry point
   - src/lib/core/types/option.ts:31: @fixtures/single-entry: export `FxInternals` (ModuleDeclaration) not supported, not documented
   - src/lib/core/functions.ts:68: toOption: shows the type FxOptionInit (src/lib/core/internal.ts), which has no page: export it from an entry point
+  - src/lib/format/upper.pipe.ts:6: FxUpperPipe: pipe name is not a string literal, its template usage is not documented
   - src/lib/forms/text-field.ts:50: FxTextField.hint: undocumented input
   - src/lib/forms/select.ts:14: FxSelect: `inputs` entry `missingProperty` has no matching class property (typo?)
   - src/lib/forms/select.ts:14: FxSelect.missingProperty: undocumented input
   - src/lib/overlay/dialog.service.ts:38: FxDialogService.closeAll: undocumented method
+  - src/lib/overlay/dialog.service.ts:26: FxDialogService.maxStack: undocumented static property
   - src/lib/overlay/toast.service.ts:12: FxToastService.position: undocumented property
   - src/lib/overlay/highlight-card.ts:24: FxHighlightCard: bindings declared by the mixin `withHighlight(CardBase)` are not documented
   - src/lib/overlay/highlight-card.ts:19: FxHighlightCard.outlined: undocumented input (declared by CardBase)

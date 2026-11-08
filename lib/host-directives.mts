@@ -12,6 +12,7 @@ export interface HostDirective {
   decl?: ClassDeclaration | undefined;
   pkg?: string | undefined; // set when the directive comes from another package
   exposed: { binding: BindingKind; name: string }[]; // what the host exposes, under its name on the host
+  fromBase?: ClassDeclaration | undefined; // base class that declares it, for an inherited host directive
 }
 
 /** Class a `hostDirectives` entry refers to: `FxTooltip`, or `directive: FxTooltip` in the object form. */
@@ -91,7 +92,7 @@ function hostDirectiveBindings(
       const model = own.models.find((m) => `${m.name}Change` === publicName);
       if (output) expose(output, alias, bindings.outputs, 'output');
       // The `xChange` half of a model alone: an output, so no default, required flag or transform.
-      else if (model) expose({ ...model, default: undefined, required: false, transform: undefined }, alias, bindings.outputs, 'output');
+      else if (model) expose({ ...model, default: undefined, required: false, transform: undefined, accepts: undefined, acceptsType: undefined }, alias, bindings.outputs, 'output');
       else warn(`${cls.getName()}: host directive ${name} has no output \`${publicName}\` to expose`, el);
     }
     directives.push({ name, decl, pkg, exposed });
@@ -99,18 +100,30 @@ function hostDirectiveBindings(
   return { bindings, directives };
 }
 
+/** Base classes of `cls` in the library's sources, the farthest first. */
+function sourceBases(cls: ClassDeclaration): ClassDeclaration[] {
+  const bases: ClassDeclaration[] = [];
+  for (let b = cls.getBaseClass(); b && !b.getSourceFile().isInNodeModules() && !bases.includes(b) && b !== cls; b = b.getBaseClass()) {
+    bases.unshift(b);
+  }
+  return bases;
+}
+
 /**
  * Everything a class offers to templates: own and inherited bindings, then those exposed by its host
- * directives, and the list of those directives.
+ * directives, and the list of those directives. Angular applies the host directives of the base classes
+ * too, before the class's own (the farthest base first). Those of a base class from another package are
+ * not read.
  */
 export function fullBindings(cls: ClassDeclaration, stack = new Set<ClassDeclaration>()): Bindings & { directives: HostDirective[] } {
-  const meta = metadata(ngDecorator(cls));
-  const own = allBindings(cls, meta);
-  const host = hostDirectiveBindings(cls, meta, stack);
-  return {
-    inputs: [...own.inputs, ...host.bindings.inputs],
-    outputs: [...own.outputs, ...host.bindings.outputs],
-    models: [...own.models, ...host.bindings.models],
-    directives: host.directives,
-  };
+  const own = allBindings(cls, metadata(ngDecorator(cls)));
+  const result = { ...own, directives: [] as HostDirective[] };
+  for (const c of [...sourceBases(cls), cls]) {
+    const host = hostDirectiveBindings(c, metadata(ngDecorator(c)), c === cls ? stack : new Set([...stack, cls]));
+    result.inputs = [...result.inputs, ...host.bindings.inputs];
+    result.outputs = [...result.outputs, ...host.bindings.outputs];
+    result.models = [...result.models, ...host.bindings.models];
+    result.directives.push(...host.directives.map((d) => ({ ...d, fromBase: c === cls ? undefined : c })));
+  }
+  return result;
 }

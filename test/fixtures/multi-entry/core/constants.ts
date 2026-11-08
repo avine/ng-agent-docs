@@ -21,3 +21,9 @@ export interface FxTheme {
  * and this part comes first on the page.
  */
 export const FxTheme: FxTheme = { accent: 'blue' };
+
+/**
+ * Old default number of rows. Declared with `let`: shown as declared.
+ * @deprecated
+ */
+export let FX_ROWS = 20;

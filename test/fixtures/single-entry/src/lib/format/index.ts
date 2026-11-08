@@ -4,3 +4,4 @@
 /** Formatting pipes. @packageDocumentation */
 export * from './amount.pipe';
 export * from './initials.pipe';
+export * from './upper.pipe';

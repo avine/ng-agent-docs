@@ -33,6 +33,7 @@ Import each symbol from the entry point given in its section heading.
 - [DatePipe](api/DatePipe.md) — Re-exported from `@angular/common`.
 - [FxAmountPipe](api/FxAmountPipe.md) `| fxAmount` — Formats a number as an amount with its currency.
 - [FxInitialsPipe](api/FxInitialsPipe.md) `| fxInitials`
+- [FxUpperPipe](api/FxUpperPipe.md) — Upper-cases a text.
 
 ### Services
 - [FxDialogService](api/FxDialogService.md) — Opens and tracks dialogs.
@@ -40,7 +41,11 @@ Import each symbol from the entry point given in its section heading.
 - [FxScrollLock](api/FxScrollLock.md) — Blocks page scrolling while an overlay is open. `@Service()` (Angular 22+): listed with the services.
 - [FxToastService](api/FxToastService.md) — Shows short messages that disappear on their own, at the bottom of the screen and above any open dialog.
 
+### NgModules
+- [FxButtonModule](api/FxButtonModule.md) — The buttons as an NgModule, for applications still built on modules.
+
 ### Types
+- [FxButtonConfig](api/FxButtonConfig.md) — Defaults applied to every button.
 - [FxButtonVariant](api/FxButtonVariant.md) — Visual style of a button.
 - [FxCompareWith](api/FxCompareWith.md) — Comparison function used to match options.
 - [FxDefaults](api/FxDefaults.md) — Default values applied when an input is not set.
@@ -63,9 +68,12 @@ Import each symbol from the entry point given in its section heading.
 - [FX_BREAKPOINTS](api/FX_BREAKPOINTS.md) — Breakpoints, in pixels.
 - [FX_DEFAULTS](api/FX_DEFAULTS.md) — Overrides the library defaults for a part of the app.
 - [FX_PAGE_SIZE](api/FX_PAGE_SIZE.md) — Default number of rows per page.
+- [FX_ROWS](api/FX_ROWS.md) — Old default number of rows. (deprecated)
 - [fxCssClass](api/fxCssClass.md) — Builds a BEM-like CSS class.
 - [FxDialogRef](api/FxDialogRef.md) — Handle on an open dialog.
+- [FxIdGenerator](api/FxIdGenerator.md) — Generates unique ids.
 - [FxOverlayBase](api/FxOverlayBase.md) — Base class of the overlays.
+- [FxRange](api/FxRange.md) — Range of numbers, bounds included.
 - [fxSize](api/fxSize-2.md) — Default size, as a value.
 - [FxTheme](api/FxTheme.md) — Default theme.
 - [identity](api/identity.md) — Returns its argument.

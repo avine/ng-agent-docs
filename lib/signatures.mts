@@ -1,5 +1,6 @@
 import {
   type ArrowFunction,
+  type ConstructorDeclaration,
   type FunctionDeclaration,
   type FunctionExpression,
   type MethodDeclaration,
@@ -24,17 +25,18 @@ export function unwrap(t: Type): Type {
   return t.getTypeArguments()[0] ?? t.getAliasTypeArguments()[0] ?? t;
 }
 
-type FunctionLike = MethodDeclaration | FunctionDeclaration | ArrowFunction | FunctionExpression;
+type Overloadable = MethodDeclaration | FunctionDeclaration | ConstructorDeclaration;
+type FunctionLike = Overloadable | ArrowFunction | FunctionExpression;
 
-// For an overloaded function or method, the implementation (it knows every overload).
-const implementationOf = <T extends MethodDeclaration | FunctionDeclaration>(fn: T): T =>
+// For an overloaded function, method or constructor, the implementation (it knows every overload).
+const implementationOf = <T extends Overloadable>(fn: T): T =>
   fn.isOverload() ? ((fn.getImplementation() as T | undefined) ?? fn) : fn;
 
 /**
- * JSDoc of a function or method. With overloads, it is usually written on the first overload,
- * not on the implementation: read the implementation's, otherwise the first overload's.
+ * JSDoc of a function, method or constructor. With overloads, it is usually written on the first
+ * overload, not on the implementation: read the implementation's, otherwise the first overload's.
  */
-export function readFnDoc(fn: MethodDeclaration | FunctionDeclaration): Doc {
+export function readFnDoc(fn: Overloadable): Doc {
   const impl = implementationOf(fn);
   const first = impl.getOverloads()[0];
   return impl.getJsDocs().length || !first ? readDoc(impl) : readDoc(first);
@@ -44,18 +46,23 @@ export function readFnDoc(fn: MethodDeclaration | FunctionDeclaration): Doc {
 // have overloads; arrow functions and function expressions have one signature.
 function overloadsOf(fn: FunctionLike): FunctionLike[] {
   const declared =
-    Node.isMethodDeclaration(fn) || Node.isFunctionDeclaration(fn) ? implementationOf(fn).getOverloads() : [];
+    Node.isMethodDeclaration(fn) || Node.isFunctionDeclaration(fn) || Node.isConstructorDeclaration(fn)
+      ? (implementationOf(fn).getOverloads() as FunctionLike[])
+      : [];
   return declared.length ? declared : [fn];
 }
 
 // Type of a parameter as printed. Prefer the declared type: `x?: string` is `string`, not `string | undefined`.
 const paramType = (p: ParameterDeclaration) => p.getTypeNode()?.getType() ?? p.getType();
 
-/** One readable signature per overload, e.g. `show(message: string, durationMs?: number): void`. */
+/**
+ * One readable signature per overload, e.g. `show(message: string, durationMs?: number): void`.
+ * A constructor gives `new FxDialogRef(id: string)`: `name` is then the class name.
+ */
 export function signature(name: string, fn: FunctionLike): string[] {
   return overloadsOf(fn).map((s) => {
     // Generic parameters, as written in the source: <T>, <T extends object = {}>
-    const generics = s.getTypeParameters().map((t) => t.getText());
+    const generics = Node.isConstructorDeclaration(s) ? [] : s.getTypeParameters().map((t) => t.getText());
     const typeParams = generics.length ? `<${generics.join(', ')}>` : '';
     const params = s.getParameters().map((p) => {
       const rest = p.isRestParameter();
@@ -63,6 +70,7 @@ export function signature(name: string, fn: FunctionLike): string[] {
       const optional = p.isOptional() && !rest ? '?' : '';
       return `${rest ? '...' : ''}${p.getName()}${optional}: ${typeText(paramType(p), p)}`;
     });
+    if (Node.isConstructorDeclaration(s)) return `new ${name}(${params.join(', ')})`;
     return `${name}${typeParams}(${params.join(', ')}): ${typeText(s.getReturnType(), s)}`;
   });
 }
@@ -70,8 +78,9 @@ export function signature(name: string, fn: FunctionLike): string[] {
 /** Adds the types `signature()` prints to `hidden`: generic parameters, parameters, return type. */
 export function signatureTypes(fn: FunctionLike, hidden: HiddenTypes): void {
   for (const s of overloadsOf(fn)) {
-    s.getTypeParameters().forEach((t) => hidden.source(t));
     s.getParameters().forEach((p) => hidden.type(paramType(p), p));
+    if (Node.isConstructorDeclaration(s)) continue;
+    s.getTypeParameters().forEach((t) => hidden.source(t));
     hidden.type(s.getReturnType(), s);
   }
 }

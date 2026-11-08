@@ -66,6 +66,8 @@ built `package.json`.
 | `--extra-docs <dir>` | Hand-written docs, copied to `agent-docs/extra-docs/` and linked at the end of the index. The folder can have any name, and must contain an `index.md`. |
 | `--extra-docs-note <text>` | Line shown between the heading of that last section and its link. Repeatable. Needs `--extra-docs`. |
 | `--strict` | Exit code 1 when documentation is missing (warnings). |
+| `-h`, `--help` | Show the options. |
+| `-v`, `--version` | Show the version. |
 
 The output folder is deleted and fully regenerated on every run, so removed symbols leave no stale
 page. The command refuses an `--out` that is or contains the library, or that holds files it did not
@@ -81,7 +83,10 @@ Everything comes from the library's sources:
 - **Entry points**: every `ng-package.json` under `--root`, and its `lib.entryFile`.
 - **Public API**: what each entry file exports. Internal code never appears.
 - **Angular metadata**: selector, inputs and outputs (decorators, signals, `inputs`/`outputs` arrays,
-  inherited from base classes, exposed by `hostDirectives`), `<ng-content>` slots.
+  inherited from base classes, exposed by `hostDirectives`, the base classes' included), `<ng-content>`
+  slots, what an input's `transform` accepts, the `exports` of an `NgModule`.
+- **Classes and services**: public properties and methods, static members (`forRoot()`), and the
+  constructor of a plain class.
 - **Usage**: JSDoc tags on the class.
 
 | Tag | Use |

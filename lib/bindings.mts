@@ -49,6 +49,22 @@ const docOf = (member: Node | undefined) => {
   return { description: doc?.description, deprecated: doc?.deprecated, decl: member };
 };
 
+/**
+ * Transform of an input: `booleanAttribute`, `toNumber`, or an inline function. Angular's own transforms
+ * are known by name; for one of the library, what it accepts is shown too, from its first parameter:
+ * `input(0, { transform: (v: string | number) => Number(v) })` accepts `string | number`.
+ */
+function transformOf(expr: Node | undefined): Pick<Member, 'transform' | 'accepts' | 'acceptsType'> {
+  if (!expr) return {};
+  const named = Node.isIdentifier(expr) || Node.isPropertyAccessExpression(expr);
+  const symbol = named ? (expr.getSymbol()?.isAlias() ? expr.getSymbol()?.getAliasedSymbol() : expr.getSymbol()) : undefined;
+  const external = !!symbol?.getDeclarations().some((d) => d.getSourceFile().isInNodeModules());
+  const param = expr.getType().getCallSignatures()[0]?.getParameters()[0];
+  if (external || !param) return { transform: oneLine(expr.getText()) };
+  const acceptsType = param.getTypeAtLocation(expr);
+  return { transform: named ? expr.getText() : undefined, accepts: typeText(acceptsType, expr), acceptsType };
+}
+
 // Default value written in the JSDoc (`@default 10`), for a binding whose default is not in the code.
 const docDefault = (member: Node | undefined) => (member ? readDoc(member).defaultValue : undefined);
 
@@ -86,7 +102,7 @@ function decoratorInput(
     prop: m.getName(),
     wrapped: false,
     ...typed(m, false),
-    transform: propOf(opts, 'transform')?.getText(),
+    ...transformOf(propOf(opts, 'transform')),
     required: propOf(opts, 'required')?.getText() === 'true',
     default: (Node.isPropertyDeclaration(m) ? m.getInitializer()?.getText() : undefined) ?? docDefault(m),
   };
@@ -103,7 +119,6 @@ function bindings(cls: ClassDeclaration, meta: ObjectLiteralExpression | undefin
     const sig = signalCall(p);
     if (sig) {
       const opts = signalOptions(sig.call);
-      const transform = propOf(opts, 'transform')?.getText();
       // The first argument is the default value, unless the binding is required or it's the options object.
       const first = sig.call.getArguments()[0];
       const hasDefault = !sig.required && (sig.fn === 'input' || sig.fn === 'model') && first && first !== opts;
@@ -112,7 +127,7 @@ function bindings(cls: ClassDeclaration, meta: ObjectLiteralExpression | undefin
         prop: p.getName(),
         wrapped: true,
         ...typed(p, true),
-        transform,
+        ...transformOf(propOf(opts, 'transform')),
         required: sig.required,
         default: (hasDefault ? first.getText() : undefined) ?? (sig.fn === 'output' ? undefined : docDefault(p)),
         ...docOf(p),
@@ -229,7 +244,7 @@ function metadataBindings(cls: ClassDeclaration, meta: ObjectLiteralExpression |
     let prop: string | undefined;
     let alias: string | undefined;
     let required = false;
-    let transform: string | undefined;
+    let transform: Node | undefined;
     const text = str(el);
     if (text !== undefined) {
       [prop, alias] = text.split(':').map((s) => s.trim());
@@ -237,7 +252,7 @@ function metadataBindings(cls: ClassDeclaration, meta: ObjectLiteralExpression |
       prop = str(propOf(el, 'name'));
       alias = str(propOf(el, 'alias'));
       required = propOf(el, 'required')?.getText() === 'true';
-      transform = propOf(el, 'transform')?.getText();
+      transform = propOf(el, 'transform');
     }
     if (!prop) {
       warn(`${cls.getName()}: \`${key}\` entry \`${oneLine(el.getText())}\` not understood, not documented`, el);
@@ -252,7 +267,7 @@ function metadataBindings(cls: ClassDeclaration, meta: ObjectLiteralExpression |
         wrapped: key === 'outputs' && !!member && Node.isPropertyDeclaration(member),
         ...typed(member, key === 'outputs'), // an output emits T of EventEmitter<T>
         required,
-        transform,
+        ...transformOf(transform),
         default:
           key === 'inputs'
             ? ((member && Node.isPropertyDeclaration(member) ? member.getInitializer()?.getText() : undefined) ?? docDefault(member))

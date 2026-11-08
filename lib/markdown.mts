@@ -1,4 +1,5 @@
 import { posix } from 'node:path';
+import type { Node } from 'ts-morph';
 import type { HostDirective } from './host-directives.mts';
 import {
   type BindingKind,
@@ -29,7 +30,7 @@ export function header(name: string, kind: Kind, doc: Doc, ctx: Context, extra: 
   const alsoFrom = ctx.alsoFrom.map((x) => `\`${x.importPath}\`` + (x.name === name ? '' : ` as \`${x.name}\``));
   if (alsoFrom.length) lines.push('', `Also exported from: ${alsoFrom.join(', ')}`);
   lines.push(...extra.flatMap((x) => ['', x]));
-  if (doc.deprecated) lines.push('', quote(`⚠️ Deprecated: ${doc.deprecated}`));
+  if (doc.deprecated !== undefined) lines.push('', quote(`⚠️ Deprecated${doc.deprecated ? `: ${doc.deprecated}` : '.'}`));
   if (doc.replacedBy) lines.push('', quote(`⚠️ For new code, use instead: ${doc.replacedBy}`));
   if (doc.replaces.length) lines.push('', `Replaces: ${doc.replaces.map(oneLine).join(', ')}`);
   if (doc.description) lines.push('', doc.description);
@@ -62,6 +63,7 @@ const BINDING_SYNTAX: Record<BindingKind, (name: string) => string> = {
  * Markdown, where a table needs `\|` escapes and column counting, and empty cells waste tokens):
  *   - `[aria-label]: string` **required** — Accessible label.
  *   - `[loading]: boolean` = `false` · transform: booleanAttribute — Shows a spinner.
+ *   - `[max]: number` · transform: toNumber · accepts: `string | number` — Maximum value.
  *   - `[kind]: Variant | undefined` ⚠️ deprecated: Use `variant`. — Old name of `variant`.
  * Missing facts are left out.
  */
@@ -73,28 +75,38 @@ export function memberList(title: string, binding: BindingKind, list: Member[], 
       (m.required ? ' **required**' : '') +
       (m.default ? ` = ${code(m.default)}` : '') +
       (m.transform ? ` · transform: ${m.transform}` : '') +
+      (m.accepts ? ` · accepts: ${code(m.accepts)}` : '') +
       (m.inheritedFrom ? ` · inherited from ${m.inheritedFrom.getName()}` : '') +
       (m.fromHostDirective ? ` · from host directive ${m.fromHostDirective.getName()}` : '') +
-      (m.deprecated ? ` ⚠️ deprecated: ${oneLine(m.deprecated)}` : '') +
+      (m.deprecated !== undefined ? ` ⚠️ deprecated${m.deprecated ? `: ${oneLine(m.deprecated)}` : ''}` : '') +
       (m.description ? ` — ${oneLine(m.description)}` : ''),
   );
   return ['', `## ${title}`, ...(note ? [note, ''] : []), ...items];
 }
 
 /**
- * One host directive, linked to its page when the library documents it:
+ * A class another page refers to, linked to its page when the library documents it:
+ *   [FxTooltip](../overlay/FxTooltip.md) · NgStyle (`@angular/common`) · FxRipple (not exported by the library)
+ */
+export function classLink(c: { name: string; decl?: Node | undefined; pkg?: string | undefined }, fromPage: string, owners: Owners): string {
+  const target = c.decl && owners.get(c.decl)?.ctx.page;
+  return c.pkg
+    ? `${c.name} (\`${c.pkg}\`)`
+    : target
+      ? `[${c.name}](${posix.relative(posix.dirname(fromPage), target)})`
+      : `${c.name} (not exported by the library)`;
+}
+
+/**
+ * One host directive, and the bindings the host exposes:
  *   - [FxTooltip](../../overlay/FxTooltip.md): exposes `[hint]`, `(tooltipToggle)`
  *   - NgStyle (`@angular/common`): exposes `[panelStyle]`
+ *   - [FxAnchor](FxAnchor.md), from base class FxMenuTrigger: exposes nothing
  */
 export function hostDirectiveLine(d: HostDirective, fromPage: string, owners: Owners): string {
-  const target = d.decl && owners.get(d.decl)?.ctx.page;
-  const label = d.pkg
-    ? `${d.name} (\`${d.pkg}\`)`
-    : target
-      ? `[${d.name}](${posix.relative(posix.dirname(fromPage), target)})`
-      : `${d.name} (not exported by the library)`;
+  const via = d.fromBase ? `, from base class ${d.fromBase.getName()}` : '';
   const exposed = d.exposed.map((x) => code(BINDING_SYNTAX[x.binding](x.name)));
-  return `- ${label}: exposes ${exposed.length ? exposed.join(', ') : 'nothing'}`;
+  return `- ${classLink(d, fromPage, owners)}${via}: exposes ${exposed.length ? exposed.join(', ') : 'nothing'}`;
 }
 
 // An @example without a code fence is assumed to be an HTML template snippet.
@@ -111,6 +123,7 @@ const GROUPS: [Kind[], string][] = [
   [['directive'], 'Directives'],
   [['pipe'], 'Pipes'],
   [['service'], 'Services'],
+  [['module'], 'NgModules'],
   [['interface', 'type', 'enum'], 'Types'],
   [['function', 'const', 'class'], 'Functions, constants and classes'],
 ];
@@ -123,7 +136,7 @@ const indexLine = (e: Entry) =>
   (e.doc.description ? ` — ${summary(e.doc.description)}` : '') +
   (e.doc.replaces.length ? ` (replaces ${e.doc.replaces.map(oneLine).join(', ')})` : '') +
   (e.doc.replacedBy ? ` → ⚠️ prefer ${oneLine(e.doc.replacedBy)}` : '') +
-  (e.doc.deprecated ? ' (deprecated)' : '');
+  (e.doc.deprecated !== undefined ? ' (deprecated)' : '');
 
 const entryPointSection = (ep: EntryPoint, entries: Entry[]) => {
   const own = entries.filter((e) => e.ep === ep);

@@ -1,0 +1,25 @@
+$ ng-agent-docs --help
+
+--- stdout
+Usage: ng-agent-docs --root <library folder> [options]
+
+Generates agent-docs/ (index.md, one page per symbol) from an Angular library's sources and JSDoc.
+Run it after the library build: the docs go into the built package.
+
+Options:
+  --root <dir>              Library folder, with its ng-package.json and package.json. Required.
+  --tsconfig <file>         Default: <root>/tsconfig.lib.json.
+  --out <dir>               Default: <dest of ng-package.json>/agent-docs. Wiped on every run.
+  --note <text>             Line added at the top of the index. Repeatable.
+  --extra-docs <dir>        Hand-written docs with an index.md, copied to agent-docs/extra-docs/.
+  --extra-docs-note <text>  Line shown above the link to the extra docs. Repeatable.
+  --strict                  Exit code 1 when documentation is missing.
+  -h, --help                Show this help.
+  -v, --version             Show the version.
+
+Exit codes: 0 done, 1 warnings with --strict, 2 usage error, 3 unexpected error.
+Options, JSDoc tags and examples: README.md of the ng-agent-docs package.
+--- stderr
+
+---
+exit code: 0
