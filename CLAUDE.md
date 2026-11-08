@@ -75,7 +75,6 @@ never dropped silently. Exit codes: 0 ok, 1 warnings with `--strict`, 2 `UsageEr
 
 ## Packaging
 
-The published package contains only `dist/ng-agent-docs.mjs`, bundled by esbuild in `prepack`
-(Node does not strip types under `node_modules`). `ts-morph` is the only runtime dependency and stays
-external. TypeScript config uses `erasableSyntaxOnly` and `verbatimModuleSyntax`: no enums, namespaces or
+The published package contains only `dist/ng-agent-docs.mjs` (see README's "Development" for why).
+`ts-morph` is the only runtime dependency and stays external. TypeScript config uses `erasableSyntaxOnly` and `verbatimModuleSyntax`: no enums, namespaces or
 parameter properties; use `import type` and `.mts` extensions in relative imports.
