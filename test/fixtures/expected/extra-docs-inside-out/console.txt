@@ -1,0 +1,9 @@
+$ ng-agent-docs --root single-entry --out <scratch>/docs --extra-docs <scratch>/docs/extra-docs
+
+--- stdout
+
+--- stderr
+Refusing to use --extra-docs <scratch>/docs/extra-docs: it is inside the output folder <scratch>/docs, which is deleted on every run.
+---
+exit code: 2
+docs/extra-docs/index.md: still there

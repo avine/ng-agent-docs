@@ -1,0 +1,8 @@
+$ ng-agent-docs --root single-entry --extra-docs-note "Nothing to link." --out <out>
+
+--- stdout
+
+--- stderr
+--extra-docs-note needs --extra-docs <folder>.
+---
+exit code: 2

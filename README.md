@@ -55,6 +55,8 @@ built `package.json`.
 | `--tsconfig <file>` | Default: `<root>/tsconfig.lib.json`. |
 | `--out <dir>` | Default: `<dest>/agent-docs`, `dest` coming from `<root>/ng-package.json` (ng-packagr's default: `dist`). Without `--out`, the command stops if the library is not built yet. |
 | `--note <text>` | Line added at the top of the index, for the agent. Repeatable. |
+| `--extra-docs <dir>` | Hand-written docs, copied to `agent-docs/extra-docs/` and linked at the end of the index. The folder can have any name, and must contain an `index.md`. |
+| `--extra-docs-note <text>` | Line shown between the heading of that last section and its link. Repeatable. Needs `--extra-docs`. |
 | `--strict` | Exit code 1 when documentation is missing (warnings). |
 
 The output folder is deleted and fully regenerated on every run, so removed symbols leave no stale
@@ -95,6 +97,32 @@ For a legacy library being replaced, tell agents which library to prefer:
 ng-agent-docs --root projects/legacy-lib --strict \
   --note "Legacy library: in new code, use @acme/ui whenever an equivalent exists (marked ⚠️)."
 ```
+
+## Add hand-written docs
+
+Some knowledge is not tied to one symbol: guides, theming, migration notes. Keep it in a folder of the
+library, with an `index.md`, and pass it with `--extra-docs`:
+
+```bash
+ng-agent-docs --root projects/my-lib --strict \
+  --extra-docs projects/my-lib/guides \
+  --extra-docs-note "Guides: theming, forms, migration from Angular Material."
+```
+
+Everything in the folder is copied, as is, to `agent-docs/extra-docs/` (symbolic links are replaced with
+the files they point to). The index ends with a section linking to `extra-docs/index.md`, after the
+`--extra-docs-note` lines, if any:
+
+```md
+## Additional documentation
+
+Guides: theming, forms, migration from Angular Material.
+
+[extra-docs/index.md](extra-docs/index.md)
+```
+
+The copy is refreshed on every run, like the rest of the output: edit the original folder, not the
+copy. The command refuses an `--extra-docs` folder that is inside the output folder, or that contains it.
 
 ## In the applications that use the library
 

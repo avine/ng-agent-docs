@@ -37,6 +37,7 @@ Import each symbol from the entry point given in its section heading.
 ### Services
 - [FxDialogService](api/FxDialogService.md) — Opens and tracks dialogs.
 - [FxLiveAnnouncer](api/FxLiveAnnouncer.md) — Announces messages to screen readers.
+- [FxScrollLock](api/FxScrollLock.md) — Blocks page scrolling while an overlay is open. `@Service()` (Angular 22+): listed with the services.
 - [FxToastService](api/FxToastService.md) — Shows short messages that disappear on their own, at the bottom of the screen and above any open dialog.
 
 ### Types

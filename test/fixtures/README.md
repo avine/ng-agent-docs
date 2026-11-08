@@ -8,6 +8,7 @@ one symbol, whose JSDoc says what it tests.
 | `multi-entry/` | **Source of truth.** Modern layout: empty primary entry point, secondary entry points (one nested, one using ng-packagr's default `src/public_api.ts`, one broken). |
 | `single-entry/` | Legacy layout: the same sources, everything exported from `src/public-api.ts`. **Generated, do not edit.** |
 | `no-entry-point/` | A library without any `ng-package.json`: the generator must exit with code 2. |
+| `guides/` | Hand-written docs for `--extra-docs`: an `index.md`, a nested page and a non-markdown file. |
 | `expected/` | Snapshot of the generator's output for each test case. **Generated, do not edit.** |
 
 ## Workflow
@@ -47,6 +48,9 @@ The snapshot records the current behavior. Fixing one of these shows up as an ex
 The output folder is deleted on every run. The `out-*` cases check that the generator refuses, with
 exit code 2, a folder that is or contains the library, or that holds files it did not generate. They
 point the generator at copies in a temp folder, so a broken check can never delete the fixtures.
+The `extra-docs-*-out` cases do the same for an `--extra-docs` folder inside the output folder, or
+containing it. Every case starts from a previous run's output, with a stale `extra-docs/` copy: it must
+be accepted, and deleted.
 
 Without `--out`, the docs go into the built package: `<dest>/agent-docs/`, `dest` coming from the
 library's `ng-package.json`. The `out-default*` cases build a fake package (just its `package.json`)

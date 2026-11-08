@@ -1,0 +1,8 @@
+$ ng-agent-docs --root single-entry --extra-docs <scratch>/guides --out <out>
+
+--- stdout
+
+--- stderr
+--extra-docs <scratch>/guides: no index.md in it, the main index links to it.
+---
+exit code: 2

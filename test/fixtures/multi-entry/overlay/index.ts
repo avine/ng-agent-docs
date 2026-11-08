@@ -6,6 +6,7 @@ export * from './toast.service';
 export * from './dialog-ref';
 export * from './overlay-base';
 export * from './live-announcer';
+export * from './scroll-lock.service';
 export * from './styled-panel';
 export * from './highlight-card';
 export * from './popover';

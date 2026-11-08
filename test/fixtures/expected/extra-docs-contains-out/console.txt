@@ -1,0 +1,9 @@
+$ ng-agent-docs --root single-entry --extra-docs <scratch>/guides --out <scratch>/guides/agent-docs
+
+--- stdout
+
+--- stderr
+Refusing to use --extra-docs <scratch>/guides: it contains the output folder <scratch>/guides/agent-docs, it would be copied into itself.
+---
+exit code: 2
+guides/index.md: still there
