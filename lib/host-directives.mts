@@ -92,7 +92,7 @@ function hostDirectiveBindings(
       const model = own.models.find((m) => `${m.name}Change` === publicName);
       if (output) expose(output, alias, bindings.outputs, 'output');
       // The `xChange` half of a model alone: an output, so no default, required flag or transform.
-      else if (model) expose({ ...model, default: undefined, required: false, transform: undefined, accepts: undefined, acceptsType: undefined }, alias, bindings.outputs, 'output');
+      else if (model) expose({ ...model, default: undefined, required: false, transform: undefined, accepts: undefined }, alias, bindings.outputs, 'output');
       else warn(`${cls.getName()}: host directive ${name} has no output \`${publicName}\` to expose`, el);
     }
     directives.push({ name, decl, pkg, exposed });

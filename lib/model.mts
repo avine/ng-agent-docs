@@ -1,4 +1,4 @@
-import type { ClassDeclaration, Node, Type } from 'ts-morph';
+import type { ClassDeclaration, Node } from 'ts-morph';
 
 // =============================================================================
 // Data model
@@ -57,8 +57,6 @@ export interface Member {
   // Internal, not rendered: used to merge and re-type inherited bindings.
   prop: string; // class member name (the template name may be an alias)
   wrapped: boolean; // `type` was unwrapped from InputSignal<T>, ModelSignal<T>, EventEmitter<T>…
-  valueType?: Type | undefined; // the type behind `type`, to find the library types it shows
-  acceptsType?: Type | undefined; // the type behind `accepts`
   decl?: Node | undefined; // the class member, where a warning about the binding points to
 }
 

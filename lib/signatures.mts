@@ -9,7 +9,6 @@ import {
   type Type,
   type VariableDeclaration,
 } from 'ts-morph';
-import type { HiddenTypes } from './hidden-types.mts';
 import { readDoc } from './jsdoc.mts';
 import type { Doc } from './model.mts';
 import { TYPE_FORMAT, typeText } from './util.mts';
@@ -44,7 +43,7 @@ export function readFnDoc(fn: Overloadable): Doc {
 
 // The signatures a consumer can call: the overloads, otherwise the function itself. Only declarations can
 // have overloads; arrow functions and function expressions have one signature.
-function overloadsOf(fn: FunctionLike): FunctionLike[] {
+export function overloadsOf(fn: FunctionLike): FunctionLike[] {
   const declared =
     Node.isMethodDeclaration(fn) || Node.isFunctionDeclaration(fn) || Node.isConstructorDeclaration(fn)
       ? (implementationOf(fn).getOverloads() as FunctionLike[])
@@ -75,15 +74,6 @@ export function signature(name: string, fn: FunctionLike): string[] {
   });
 }
 
-/** Adds the types `signature()` prints to `hidden`: generic parameters, parameters, return type. */
-export function signatureTypes(fn: FunctionLike, hidden: HiddenTypes): void {
-  for (const s of overloadsOf(fn)) {
-    s.getParameters().forEach((p) => hidden.type(paramType(p), p));
-    if (Node.isConstructorDeclaration(s)) continue;
-    s.getTypeParameters().forEach((t) => hidden.source(t));
-    hidden.type(s.getReturnType(), s);
-  }
-}
 
 /** Call signatures of a function type, its type arguments applied: `FxCheck<number>` → `isOdd(value: number): boolean`. */
 export const callSignatures = (name: string, t: Type, at: Node) =>
@@ -92,13 +82,6 @@ export const callSignatures = (name: string, t: Type, at: Node) =>
     return name + checker.signatureToString(s.compilerSignature, at.compilerNode, TYPE_FORMAT);
   });
 
-/** Adds the types `callSignatures()` prints to `hidden`. */
-export function callSignatureTypes(t: Type, at: Node, hidden: HiddenTypes): void {
-  for (const s of t.getCallSignatures()) {
-    s.getParameters().forEach((p) => hidden.type(p.getTypeAtLocation(at), at));
-    hidden.type(s.getReturnType(), at);
-  }
-}
 
 /**
  * Function assigned to a const: `export const f = (...) => ...` or `export const f = function (...) {...}`.

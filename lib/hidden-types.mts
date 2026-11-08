@@ -1,13 +1,5 @@
 import { relative, resolve } from 'node:path';
-import {
-  type ClassDeclaration,
-  type EnumDeclaration,
-  type InterfaceDeclaration,
-  Node,
-  type Symbol as MorphSymbol,
-  type Type,
-  type TypeAliasDeclaration,
-} from 'ts-morph';
+import { type ClassDeclaration, type EnumDeclaration, type InterfaceDeclaration, Node, type TypeAliasDeclaration } from 'ts-morph';
 import { type Library, warn } from './model.mts';
 import { isInside, toPosix } from './util.mts';
 
@@ -16,82 +8,51 @@ import { isInside, toPosix } from './util.mts';
 // =============================================================================
 type Named = InterfaceDeclaration | TypeAliasDeclaration | ClassDeclaration | EnumDeclaration;
 
-// Recursion limit for the inline types of a page (object literals within object literals…).
-const MAX_DEPTH = 8;
+const isNamed = (n: Node): n is Named =>
+  Node.isInterfaceDeclaration(n) || Node.isTypeAliasDeclaration(n) || Node.isClassDeclaration(n) || Node.isEnumDeclaration(n);
 
-/** The named declaration behind a symbol: an interface, alias, class or enum (an enum member gives its enum). */
-function namedDeclarations(symbol: MorphSymbol): Named[] {
-  return symbol.getDeclarations().flatMap((d) => {
-    const n = Node.isEnumMember(d) ? d.getParent() : d;
-    const named =
-      Node.isInterfaceDeclaration(n) || Node.isTypeAliasDeclaration(n) || Node.isClassDeclaration(n) || Node.isEnumDeclaration(n);
-    return named ? [n] : [];
-  });
-}
+// The body of a function, method or accessor: never shown on a page.
+const isBody = (n: Node) => {
+  const parent = n.getParent();
+  return !!parent && (Node.isBodied(parent) || Node.isBodyable(parent)) && parent.getBody() === n;
+};
 
 /**
  * Collects the hidden types of one page: a named type of the library (declared under --root) that has no
  * page. `add(opts: AddOptions)` cannot be used if `AddOptions` is never shown. Types of other packages
  * are not checked: their own docs describe them.
+ *
+ * Only the type references written in the source are read: an inferred type (a return type without
+ * annotation) is not checked.
  */
 export class HiddenTypes {
   private readonly found = new Set<Named>();
-  private readonly seen = new Set<unknown>(); // compiler types already walked
   private readonly lib: Library;
 
   constructor(lib: Library) {
     this.lib = lib;
   }
 
-  /** Checks a symbol a page shows by name. Returns whether it is a named type (printed by its name). */
-  private check(symbol: MorphSymbol | undefined): boolean {
-    const decls = symbol ? namedDeclarations(symbol.isAlias() ? symbol.getAliasedSymbol() ?? symbol : symbol) : [];
-    const inLibrary = decls.filter((d) => isInside(resolve(d.getSourceFile().getFilePath()), this.lib.root));
-    if (inLibrary.length && !decls.some((d) => this.lib.owners.has(d))) this.found.add(inLibrary[0]!);
-    return decls.length > 0;
-  }
-
-  /**
-   * A type the page prints, as `typeText()` prints it: named types by their name (with their type
-   * arguments), inline types (unions, object literals, function types) expanded.
-   */
-  type(t: Type | undefined, at: Node, depth = 0): this {
-    if (!t || depth > MAX_DEPTH || this.seen.has(t.compilerType)) return this;
-    this.seen.add(t.compilerType);
-    const next = (x: Type | undefined) => this.type(x, at, depth + 1);
-    if (t.getAliasSymbol()) {
-      this.check(t.getAliasSymbol());
-      t.getAliasTypeArguments().forEach(next);
-      return this;
-    }
-    if (t.isTypeParameter()) return this;
-    if (this.check(t.getSymbol())) {
-      t.getTypeArguments().forEach(next);
-      return this;
-    }
-    if (t.isUnion()) t.getUnionTypes().forEach(next);
-    else if (t.isIntersection()) t.getIntersectionTypes().forEach(next);
-    else if (t.isTuple()) t.getTupleElements().forEach(next);
-    else if (t.isObject()) {
-      // Inline object or function type: printed member by member.
-      t.getTypeArguments().forEach(next); // arrays (Array<T> has no symbol here when anonymous)
-      for (const s of [...t.getCallSignatures(), ...t.getConstructSignatures()]) {
-        for (const p of s.getParameters()) next(p.getTypeAtLocation(at));
-        next(s.getReturnType());
-      }
-      for (const p of t.getProperties()) next(p.getTypeAtLocation(at));
+  /** Type references written in the nodes a page shows (`x: AddOptions`, `extends Base`), function bodies excepted. */
+  scan(...nodes: (Node | undefined)[]): this {
+    for (const node of nodes) {
+      node?.forEachDescendant((n, traversal) => {
+        if (isBody(n)) return traversal.skip();
+        const ref = Node.isTypeReference(n) ? n.getTypeName() : Node.isExpressionWithTypeArguments(n) ? n.getExpression() : undefined;
+        const id = ref && Node.isQualifiedName(ref) ? ref.getRight() : ref && Node.isPropertyAccessExpression(ref) ? ref.getNameNode() : ref;
+        if (id) this.check(id);
+      });
     }
     return this;
   }
 
-  /** Type references written in source code the page shows as is: an interface, a type alias, generics. */
-  source(node: Node | undefined): this {
-    for (const n of node ? [node, ...node.getDescendants()] : []) {
-      const ref = Node.isTypeReference(n) ? n.getTypeName() : Node.isExpressionWithTypeArguments(n) ? n.getExpression() : undefined;
-      const id = ref && Node.isQualifiedName(ref) ? ref.getRight() : ref && Node.isPropertyAccessExpression(ref) ? ref.getNameNode() : ref;
-      this.check(id?.getSymbol());
-    }
-    return this;
+  // A reference to an enum member (`FxTone.Neutral`) gives its enum.
+  private check(id: Node): void {
+    const symbol = id.getSymbol();
+    const decls = (symbol?.isAlias() ? symbol.getAliasedSymbol() ?? symbol : symbol)?.getDeclarations() ?? [];
+    const named = decls.map((d) => (Node.isEnumMember(d) ? d.getParent() : d)).filter(isNamed);
+    const inLibrary = named.filter((d) => isInside(resolve(d.getSourceFile().getFilePath()), this.lib.root));
+    if (inLibrary.length && !named.some((d) => this.lib.owners.has(d))) this.found.add(inLibrary[0]!);
   }
 
   /** One warning per hidden type, at the declaration whose page shows it. */

@@ -8,7 +8,6 @@ import {
   type PropertyDeclaration,
   type SetAccessorDeclaration,
   SyntaxKind,
-  type Type,
 } from 'ts-morph';
 import { readDoc } from './jsdoc.mts';
 import { type Bindings, type Member, warn } from './model.mts';
@@ -29,19 +28,15 @@ const memberOf = (cls: ClassDeclaration, prop: string) =>
  * Type of a binding, read from its class member: a setter accepts its parameter's type, a getter gives
  * its return type, a property its own type, unwrapped (InputSignal<T>, EventEmitter<T> → T) when `wrapped`.
  */
-function memberValueType(member: Node | undefined, wrapped: boolean): Type | undefined {
-  if (!member) return undefined;
-  if (Node.isSetAccessorDeclaration(member)) return member.getParameters()[0]?.getType() ?? member.getType();
-  if (Node.isGetAccessorDeclaration(member)) return member.getReturnType();
-  if (Node.isPropertyDeclaration(member)) return wrapped ? unwrap(member.getType()) : member.getType();
-  return undefined;
+function memberType(member: Node | undefined, wrapped: boolean): string {
+  if (!member) return 'unknown';
+  if (Node.isSetAccessorDeclaration(member)) {
+    return typeText(member.getParameters()[0]?.getType() ?? member.getType(), member);
+  }
+  if (Node.isGetAccessorDeclaration(member)) return typeText(member.getReturnType(), member);
+  if (Node.isPropertyDeclaration(member)) return typeText(wrapped ? unwrap(member.getType()) : member.getType(), member);
+  return 'unknown';
 }
-
-// `type` and `valueType` of a binding.
-const typed = (member: Node | undefined, wrapped: boolean) => {
-  const valueType = memberValueType(member, wrapped);
-  return { type: valueType && member ? typeText(valueType, member) : 'unknown', valueType };
-};
 
 // Description and deprecation of a binding, from the JSDoc of its class member (none if it is missing).
 const docOf = (member: Node | undefined) => {
@@ -54,15 +49,14 @@ const docOf = (member: Node | undefined) => {
  * are known by name; for one of the library, what it accepts is shown too, from its first parameter:
  * `input(0, { transform: (v: string | number) => Number(v) })` accepts `string | number`.
  */
-function transformOf(expr: Node | undefined): Pick<Member, 'transform' | 'accepts' | 'acceptsType'> {
+function transformOf(expr: Node | undefined): Pick<Member, 'transform' | 'accepts'> {
   if (!expr) return {};
   const named = Node.isIdentifier(expr) || Node.isPropertyAccessExpression(expr);
   const symbol = named ? (expr.getSymbol()?.isAlias() ? expr.getSymbol()?.getAliasedSymbol() : expr.getSymbol()) : undefined;
   const external = !!symbol?.getDeclarations().some((d) => d.getSourceFile().isInNodeModules());
   const param = expr.getType().getCallSignatures()[0]?.getParameters()[0];
   if (external || !param) return { transform: oneLine(expr.getText()) };
-  const acceptsType = param.getTypeAtLocation(expr);
-  return { transform: named ? expr.getText() : undefined, accepts: typeText(acceptsType, expr), acceptsType };
+  return { transform: named ? expr.getText() : undefined, accepts: typeText(param.getTypeAtLocation(expr), expr) };
 }
 
 // Default value written in the JSDoc (`@default 10`), for a binding whose default is not in the code.
@@ -101,7 +95,7 @@ function decoratorInput(
     name: str(arg) ?? str(propOf(opts, 'alias')) ?? m.getName(),
     prop: m.getName(),
     wrapped: false,
-    ...typed(m, false),
+    type: memberType(m, false),
     ...transformOf(propOf(opts, 'transform')),
     required: propOf(opts, 'required')?.getText() === 'true',
     default: (Node.isPropertyDeclaration(m) ? m.getInitializer()?.getText() : undefined) ?? docDefault(m),
@@ -126,7 +120,7 @@ function bindings(cls: ClassDeclaration, meta: ObjectLiteralExpression | undefin
         name: str(propOf(opts, 'alias')) ?? p.getName(),
         prop: p.getName(),
         wrapped: true,
-        ...typed(p, true),
+        type: memberType(p, true),
         ...transformOf(propOf(opts, 'transform')),
         required: sig.required,
         default: (hasDefault ? first.getText() : undefined) ?? (sig.fn === 'output' ? undefined : docDefault(p)),
@@ -150,7 +144,7 @@ function bindings(cls: ClassDeclaration, meta: ObjectLiteralExpression | undefin
         name: str(outputDecorator.getArguments()[0]) ?? p.getName(),
         prop: p.getName(),
         wrapped: true,
-        ...typed(p, true),
+        type: memberType(p, true),
         required: false,
         ...docOf(p),
       });
@@ -217,9 +211,8 @@ export function allBindings(cls: ClassDeclaration, meta: ObjectLiteralExpression
         const keepOwn =
           setterType && !setterType.getDescendantsOfKind(SyntaxKind.Identifier).some((id) => typeParams.has(id.getText()));
         const t = keepOwn ? undefined : cls.getType().getProperty(m.prop)?.getTypeAtLocation(cls);
-        const valueType = t ? (m.wrapped ? unwrap(t) : t) : m.valueType;
-        const type = t && valueType ? typeText(valueType, cls) : m.type;
-        groups[i]?.push({ ...m, type, valueType, inheritedFrom: base });
+        const type = t ? typeText(m.wrapped ? unwrap(t) : t, cls) : m.type;
+        groups[i]?.push({ ...m, type, inheritedFrom: base });
       }
     });
     base = base.getBaseClass();
@@ -265,7 +258,7 @@ function metadataBindings(cls: ClassDeclaration, meta: ObjectLiteralExpression |
         name: alias || prop,
         prop,
         wrapped: key === 'outputs' && !!member && Node.isPropertyDeclaration(member),
-        ...typed(member, key === 'outputs'), // an output emits T of EventEmitter<T>
+        type: memberType(member, key === 'outputs'), // an output emits T of EventEmitter<T>
         required,
         ...transformOf(transform),
         default:
@@ -321,7 +314,7 @@ export function externalBindings(cls: ClassDeclaration): Bindings | undefined {
       name,
       prop,
       wrapped: option('isSignal') === 'true' || model,
-      ...typed(member, option('isSignal') === 'true' || model),
+      type: memberType(member, option('isSignal') === 'true' || model),
       required: option('required') === 'true',
       ...docOf(member),
     });
@@ -330,7 +323,7 @@ export function externalBindings(cls: ClassDeclaration): Bindings | undefined {
     const name = literalType(value) ?? prop;
     if (modelNames.has(name)) continue; // the `xChange` half of a model
     const member = memberOf(cls, prop);
-    result.outputs.push({ name, prop, wrapped: true, ...typed(member, true), required: false, ...docOf(member) });
+    result.outputs.push({ name, prop, wrapped: true, type: memberType(member, true), required: false, ...docOf(member) });
   }
   return result;
 }

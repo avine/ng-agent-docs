@@ -12,7 +12,7 @@ import { readDoc } from './jsdoc.mts';
 import { constructorSection, documentedMethods, memberSections } from './members.mts';
 import { classLink, examples, header, hostDirectiveLine, memberList, paramSection } from './markdown.mts';
 import { type Context, type Doc, type Entry, type Kind, type Library, type Member, NG_DECORATORS, type Owners, warn } from './model.mts';
-import { callSignatures, callSignatureTypes, functionInitializer, readFnDoc, signature, signatureTypes } from './signatures.mts';
+import { callSignatures, functionInitializer, overloadsOf, readFnDoc, signature } from './signatures.mts';
 import {
   code,
   codeBlock,
@@ -95,7 +95,7 @@ function describeClass(name: string, kind: Kind, cls: ClassDeclaration, ctx: Con
     selector = str(propOf(meta, 'selector'));
     const exportAs = str(propOf(meta, 'exportAs'));
     const { inputs, outputs, models, directives } = fullBindings(cls);
-    for (const m of [...inputs, ...outputs, ...models]) hidden.type(m.valueType, cls).type(m.acceptsType, cls);
+    hidden.scan(...[...inputs, ...outputs, ...models].map((m) => m.decl));
     // No selector: a directive is an abstract base class (`@Directive()`), only meant to be extended;
     // a component is created from code (a route, a dialog).
     const selectorLine = selector
@@ -144,7 +144,7 @@ function describeClass(name: string, kind: Kind, cls: ClassDeclaration, ctx: Con
     lines.push(...header(name, kind, doc, ctx, pipeName ? [`Template usage: \`{{ value | ${pipeName} }}\``] : []));
     const transform = cls.getMethod('transform');
     if (transform) {
-      signatureTypes(transform, hidden);
+      hidden.scan(...overloadsOf(transform));
       lines.push('', '## Signature', codeBlock('ts', signature('transform', transform).join('\n')), ...paramSection(readFnDoc(transform)));
     }
   } else {
@@ -263,7 +263,7 @@ export function describe(name: string, decl: Node, ctx: Context, lib: Library): 
   let body: string;
   if (Node.isFunctionDeclaration(decl)) {
     body = signature(name, decl).join('\n');
-    signatureTypes(decl, hidden);
+    hidden.scan(...overloadsOf(decl));
   } else if (Node.isVariableDeclaration(decl)) {
     // A function typed on its variable (`authGuard: CanActivateFn = ...`) keeps that type, as in the .d.ts:
     // the alias name tells what the function is for, and the arrow's inferred signature can be narrower.
@@ -272,15 +272,14 @@ export function describe(name: string, decl: Node, ctx: Context, lib: Library): 
     // `export let` is a live binding the consumer cannot assign: shown as declared all the same.
     const keyword = decl.getVariableStatement()?.getDeclarationKind() ?? 'const';
     body = fn && !typed ? signature(name, fn).join('\n') : `${keyword} ${name}: ${typeText(decl.getType(), decl)};`;
-    if (fn && !typed) signatureTypes(fn, hidden);
-    else if (fn && isHidden(decl.getType(), lib.owners)) {
-      // The signature shown below the hidden alias is what the agent reads: check its types, not the alias.
+    if (fn && typed && isHidden(decl.getType(), lib.owners)) {
+      // The signature shown below the hidden alias is what the agent reads: the alias is not reported.
       body += '\n' + callSignatures(name, decl.getType(), decl).join('\n');
-      callSignatureTypes(decl.getType(), decl, hidden);
-    } else hidden.type(decl.getType(), decl);
+      hidden.scan(fn);
+    } else hidden.scan(decl);
   } else {
     body = decl.getText(); // interface, type alias, enum
-    hidden.source(decl);
+    hidden.scan(decl);
   }
   hidden.report(name, decl);
 

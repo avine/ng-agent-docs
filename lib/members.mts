@@ -11,7 +11,7 @@ import type { HiddenTypes } from './hidden-types.mts';
 import { readDoc } from './jsdoc.mts';
 import { paramItems } from './markdown.mts';
 import { type Library, warn } from './model.mts';
-import { callSignatures, callSignatureTypes, readFnDoc, signature, signatureTypes } from './signatures.mts';
+import { callSignatures, overloadsOf, readFnDoc, signature } from './signatures.mts';
 import { code, firstParagraph, isPublic, isPublicStatic, packageOf, typeText } from './util.mts';
 
 // =============================================================================
@@ -89,20 +89,14 @@ function memberLines(cls: ClassDeclaration, { member, isStatic, base }: ClassMem
   if (Node.isMethodDeclaration(member)) {
     const fnDoc = readFnDoc(member);
     const d = fnDoc.description;
-    let signatures: string[];
-    if (resolved) {
-      signatures = callSignatures(`${prefix}${name}`, resolved, cls);
-      callSignatureTypes(resolved, cls, hidden);
-    } else {
-      signatures = signature(`${prefix}${name}`, member);
-      signatureTypes(member, hidden);
-    }
+    hidden.scan(...overloadsOf(member));
+    const signatures = resolved ? callSignatures(`${prefix}${name}`, resolved, cls) : signature(`${prefix}${name}`, member);
     const lines = signatures.map((s) => `- ${code(s)}${from}${d ? ` — ${firstParagraph(d)}` : ''}`);
     return { lines: [...lines, ...paramItems(fnDoc)], documented: !!d };
   }
   if (Node.isParameterDeclaration(member)) {
     const type = resolved ?? member.getType();
-    hidden.type(type, member);
+    hidden.scan(member);
     const text = `${member.isReadonly() ? 'readonly ' : ''}${name}: ${typeText(type, member)}`;
     return { lines: [`- ${code(text)}${from} — constructor parameter`], documented: true };
   }
@@ -110,7 +104,7 @@ function memberLines(cls: ClassDeclaration, { member, isStatic, base }: ClassMem
   const readonly =
     (Node.isPropertyDeclaration(member) && member.isReadonly()) || (Node.isGetAccessorDeclaration(member) && !member.getSetAccessor());
   const type = resolved ?? (Node.isGetAccessorDeclaration(member) ? member.getReturnType() : member.getType());
-  hidden.type(type, member);
+  hidden.scan(member);
   const d = readDoc(member).description;
   const text = `${prefix}${readonly ? 'readonly ' : ''}${name}: ${typeText(type, base ? cls : member)}`;
   return { lines: [`- ${code(text)}${from}${d ? ` — ${firstParagraph(d)}` : ''}`], documented: !!d };
@@ -172,7 +166,7 @@ export function constructorSection(name: string, cls: ClassDeclaration, hidden: 
   }
   const fnDoc = readFnDoc(ctor);
   const from = owner === cls ? '' : ` · inherited from ${owner.getName()}`;
-  signatureTypes(ctor, hidden);
+  hidden.scan(...overloadsOf(ctor));
   const lines = signature(name, ctor).map((s) => `- ${code(s)}${from}${fnDoc.description ? ` — ${firstParagraph(fnDoc.description)}` : ''}`);
   return ['', '## Constructor', ...lines, ...paramItems(fnDoc)];
 }
