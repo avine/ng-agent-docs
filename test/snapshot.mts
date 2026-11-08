@@ -421,7 +421,8 @@ if (!differences.length) {
 console.error(`agent-docs snapshot test: ${differences.length} difference(s)\n`);
 console.error(differences.map((d) => `  ${d}`).join('\n'));
 // Line-by-line diff, when git is available (it works outside a repository with --no-index).
-spawnSync('git', ['--no-pager', 'diff', '--no-index', '--color=always', EXPECTED, actual], { stdio: 'inherit' });
+// core.autocrlf=false: no "LF will be replaced by CRLF" warning per file on Windows.
+spawnSync('git', ['-c', 'core.autocrlf=false', '--no-pager', 'diff', '--no-index', '--color=always', EXPECTED, actual], { stdio: 'inherit' });
 console.error(`\nActual output kept in ${actual}`);
 console.error('If the change is intended: node test/snapshot.mts --update');
 process.exit(1);
