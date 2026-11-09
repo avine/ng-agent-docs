@@ -60,10 +60,12 @@ const sameOutputAs = (other: string, out: string) => {
 };
 
 // Default --out: a copy of single-entry in <scratch>/lib, built (or not) into the `dest` of its ng-package.json.
-// The repo's node_modules are linked next to it, so its types resolve as in the fixture.
+// The repo's node_modules are linked next to it, so its types resolve as in the fixture. A junction, not a
+// 'dir' symlink: on Windows, a symlink needs admin rights or Developer Mode (EPERM), a junction does not.
+// The type is ignored elsewhere. A junction needs an absolute target: nodeModules() returns one.
 function libWithDest(scratch: string, dest?: string): void {
   copyFixture('single-entry', join(scratch, 'lib'));
-  symlinkSync(nodeModules(), join(scratch, 'node_modules'), 'dir');
+  symlinkSync(nodeModules(), join(scratch, 'node_modules'), 'junction');
   const ngPackage = join(scratch, 'lib', 'ng-package.json');
   const config = JSON.parse(readFileSync(ngPackage, 'utf8')) as Record<string, unknown>;
   writeFileSync(ngPackage, JSON.stringify(dest ? { ...config, dest } : config, null, 2) + '\n');
