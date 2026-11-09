@@ -8,7 +8,7 @@ Range of percentages. Inherits its constructor, members and static members from 
 - `new FxPercentRange(min: number, max?: number)` · inherited from FxRange — Creates a range.
   - `min`: Lower bound.
   - `max`: Upper bound, `min` by default.
-  - **see**: [FxRange.parse](FxRange.md), to read a range from text: listed under the constructor, here and on FxPercentRange
+  - **see**: [FxRange.parse](FxRange.md), to read a range from text: listed under the constructor, not linked here (same page), linked on FxPercentRange
 
 ## Properties
 - `readonly valid: boolean` — Whether the range stays within 0..100.

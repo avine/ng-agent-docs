@@ -4,7 +4,7 @@ export class FxRange {
    * Creates a range.
    * @param min Lower bound.
    * @param max - Upper bound, `min` by default.
-   * @see FxRange.parse, to read a range from text: listed under the constructor, here and on FxPercentRange
+   * @see FxRange.parse, to read a range from text: listed under the constructor, not linked here (same page), linked on FxPercentRange
    */
   constructor(
     readonly min: number,

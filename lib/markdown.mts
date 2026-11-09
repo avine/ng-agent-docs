@@ -129,7 +129,8 @@ const LEADING_NAME = /^[A-Za-z_$][\w$]*(?:[.#][\w$]+)*(?=[\s,.;]|$)/;
 
 /**
  * The @see tags of a JSDoc block, one text each. A reference TypeScript resolves is linked to the page that
- * documents it (a member: its class's page), a URL is linked, other text is kept as written:
+ * documents it (a member: its class's page; not linked if that is the page being written), a URL is linked,
+ * other text is kept as written:
  *   [FxDialogService](FxDialogService.md)
  *   [Opening a dialog](FxDialogService.md), then [FxDialogRef#close](FxDialogRef.md)
  *   NgStyle (`@angular/common`)
@@ -152,7 +153,8 @@ function seeRefs(name: string, doc: Doc, at: Node, fromPage: string, owners: Own
     let owner: Node | undefined = decl;
     while (owner && !Node.isSourceFile(owner) && !owners.has(owner)) owner = owner.getParent();
     const page = owner && owners.get(owner)?.ctx.page;
-    if (page) return `[${text}](${posix.relative(posix.dirname(fromPage), page)})`;
+    // A reference to the page being written is not linked: it would lead back to the same file.
+    if (page) return page === fromPage ? text : `[${text}](${posix.relative(posix.dirname(fromPage), page)})`;
     if (decl.getSourceFile().isInNodeModules()) return `${text} (\`${packageOf(decl.getSourceFile().getFilePath())}\`)`;
     report(`${name}: @see refers to ${target}, which has no page: export it from an entry point`);
     return `${text} (not exported by the library)`;
