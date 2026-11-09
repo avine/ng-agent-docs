@@ -48,7 +48,7 @@ export const paramSection = (doc: Doc) => [
 /** The same, as sub-items of a method in a list: one line each. */
 export const paramItems = (doc: Doc) => [
   ...doc.params.map((p) => `  - \`${p.name}\`${p.text ? `: ${oneLine(p.text)}` : ''}`),
-  ...(doc.returns ? [`  - returns: ${oneLine(doc.returns)}`] : []),
+  ...(doc.returns ? [`  - **returns**: ${oneLine(doc.returns)}`] : []),
 ];
 
 // Binding syntax used as the name of each list item: what the agent writes in the template.

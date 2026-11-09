@@ -18,6 +18,7 @@ Opens and tracks dialogs.
 - `open<R>(component: Type<unknown>, data?: unknown): FxDialogRef<R>` — Opens a component in a dialog.
   - `component`: Component shown in the dialog.
   - `data`: Passed to the component, through `FxDialogRef`.
+  - **returns**: A reference to close the dialog and read its result.
 - `closeAll(): void`
 
 ## Static members (`FxDialogService.member`)

@@ -22,7 +22,7 @@ agent-docs: 68 symbols from 9 entry point(s) → <scratch>/button
   - forms/select.ts:14: FxSelect.missingProperty: undocumented input
   - forms/date/date-picker.ts:19: FxDatePicker: an <ng-content> select (`${…}`) is not a constant, that slot is not documented
   - forms/date/date-range.ts:4: FxDateRange: templateUrl `./missing-template.html` not found, its content projection slots are not documented
-  - overlay/dialog.service.ts:38: FxDialogService.closeAll: undocumented method
+  - overlay/dialog.service.ts:40: FxDialogService.closeAll: undocumented method
   - overlay/dialog.service.ts:26: FxDialogService.maxStack: undocumented static property
   - overlay/toast.service.ts:12: FxToastService.position: undocumented property
   - overlay/highlight-card.ts:24: FxHighlightCard: bindings declared by the mixin `withHighlight(CardBase)` are not documented
