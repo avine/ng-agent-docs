@@ -1,4 +1,4 @@
-import { Node } from 'ts-morph';
+import { type JSDoc, Node, SyntaxKind } from 'ts-morph';
 import type { Doc } from './model.mts';
 import { toLf } from './util.mts';
 
@@ -7,7 +7,7 @@ import { toLf } from './util.mts';
 // =============================================================================
 // Tags that can follow text on the same line, as in a one-line JSDoc: `/** Old. @deprecated Use FxNew. */`.
 // Not @default: in an @example without a code fence, it is Angular control flow (`@case (1) {…} @default {…}`).
-const INLINE_TAGS = ['usage', 'avoid', 'replacedBy', 'replaces', 'example', 'deprecated', 'param', 'returns'];
+const INLINE_TAGS = ['usage', 'avoid', 'replacedBy', 'replaces', 'example', 'deprecated', 'param', 'returns', 'see'];
 const INLINE_TAG = new RegExp(`\\s+(?=@(?:${INLINE_TAGS.join('|')})\\b)`, 'g');
 
 // Angular control flow at the start of a line, in an @example without a code fence: content, not a tag.
@@ -64,13 +64,38 @@ export function parseParam(text: string): { name: string; text: string } | undef
   return name ? { name, text: (m[2] ?? '').trim() } : undefined;
 }
 
+// Nodes that name a symbol in a @see tag: `@see FxTooltip`, `{@link FxTooltip}`, `{@linkcode …}`, `{@linkplain …}`.
+const REFERENCES = new Set([SyntaxKind.JSDocNameReference, SyntaxKind.JSDocLink, SyntaxKind.JSDocLinkCode, SyntaxKind.JSDocLinkPlain]);
+
+/**
+ * Declarations the @see tags of a JSDoc block refer to, by reference as written. TypeScript finds them as
+ * for "Go to definition": the name must be declared or imported in the file. `FxDialogRef.close` gives the
+ * method; `FxDialogRef#close` (JSDoc member syntax, which TypeScript does not resolve) gives the class.
+ * The text of the tags still comes from parseJsDoc: only the references are read from TypeScript's tags.
+ */
+function seeTargets(jsDoc: JSDoc): Map<string, Node> {
+  const targets = new Map<string, Node>();
+  for (const tag of jsDoc.getTags().filter(Node.isJSDocSeeTag)) {
+    tag.forEachDescendant((ref) => {
+      if (!REFERENCES.has(ref.getKind())) return;
+      const name = ref.forEachChild((c) => c); // Identifier, QualifiedName or JSDocMemberName
+      let target = name;
+      while (Node.isJSDocMemberName(target)) target = target.forEachChild((c) => c); // `A#b` → `A`
+      const symbol = target?.getSymbol();
+      const decl = (symbol?.isAlias() ? symbol.getAliasedSymbol() : symbol)?.getDeclarations()[0];
+      if (name && decl) targets.set(name.getText(), decl);
+    });
+  }
+  return targets;
+}
+
 /**
  * Reads the JSDoc block closest to a node and extracts the description and the tags we render.
  * To support a new tag: add a field to `Doc` (model.mts), a `case` here (and its name to INLINE_TAGS if it
  * can follow text on a line), and render it in markdown.mts.
  */
 export function readDoc(node: Node): Doc {
-  const doc: Doc = { usage: [], avoid: [], replaces: [], examples: [], params: [] };
+  const doc: Doc = { usage: [], avoid: [], replaces: [], examples: [], params: [], see: [] };
   // For `export const X = ...`, the JSDoc is attached to the statement, not to the declaration.
   const host = Node.isVariableDeclaration(node) ? node.getVariableStatement() : node;
   if (!host || !Node.isJSDocable(host)) return doc;
@@ -97,7 +122,9 @@ export function readDoc(node: Node): Doc {
       case 'return': doc.returns = text || undefined; break;
       case 'default':
       case 'defaultValue': doc.defaultValue = text || undefined; break;
+      case 'see': if (text) doc.see.push(text); break;
     }
   }
+  if (doc.see.length) doc.seeTargets = seeTargets(jsDoc);
   return doc;
 }

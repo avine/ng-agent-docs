@@ -43,8 +43,10 @@ In the workspace's `package.json`:
 `--strict` fails the build when the docs are incomplete, so an incomplete package is never published.
 Incomplete means a symbol without a description, an undocumented input, output, or public member of a
 service or class, or a page that shows a type of the library that has no page (`add(opts: AddOptions)`
-with `AddOptions` exported by no entry point: the agent cannot look it up). A component's undocumented
-public methods are not counted: they are template handlers.
+with `AddOptions` exported by no entry point: the agent cannot look it up). A `@see` that refers to a
+symbol of the library without a page, or a `{@link}` that TypeScript cannot resolve (not imported, or
+misspelled), is reported too. A component's undocumented public methods are not counted: they are template
+handlers.
 
 Each warning starts with the file and line to fix, relative to `--root`:
 
@@ -101,6 +103,13 @@ Everything comes from the library's sources:
 | `@deprecated` | Deprecation message. |
 | `@param`, `@returns` | Parameters and return value of a function, method or pipe. |
 | `@default` | Default value of an input whose default is not in the code (setter, `inputs` metadata). |
+| `@see` | Related symbol or page, listed under "See also". One tag per reference. |
+
+`@see FxTooltip` and `@see {@link FxTooltip}` link to the page of `FxTooltip`, from any entry point; a
+member (`{@link FxDialogRef.close}`, or `FxDialogRef#close`) links to its class's page. TypeScript resolves
+the name as for "Go to definition": it must be declared or imported in the file. `{@link FxTooltip | the
+tooltip}` sets the link text, and a URL becomes a link. Other text is kept as written: `@see the theming
+guide`. A symbol of another package is named with its package, not linked.
 
 An entry point gets a description from a `@packageDocumentation` block at the top of its entry file:
 

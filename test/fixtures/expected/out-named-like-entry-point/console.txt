@@ -4,7 +4,7 @@ $ ng-agent-docs --root multi-entry --out <scratch>/button
 agent-docs: 68 symbols from 9 entry point(s) → <scratch>/button
 --- stderr
 
-26 warning(s):
+28 warning(s):
   - broken/ng-package.json: broken: entry file not found (broken/index.ts)
   - utils/src/public_api.ts: @fixtures/multi-entry/utils: default export not documented, export it by name
   - utils/src/public_api.ts: @fixtures/multi-entry/utils: export `missingHelper` could not be resolved, not documented
@@ -15,7 +15,7 @@ agent-docs: 68 symbols from 9 entry point(s) → <scratch>/button
   - core/index.ts: @fixtures/multi-entry/core: namespace re-export `fxMath` (export * as fxMath) not documented, export its members by name
   - core/types/option.ts:23: FxGroup: shows the type FxGroupBase (core/internal.ts), which has no page: export it from an entry point
   - core/types/option.ts:31: @fixtures/multi-entry/core: export `FxInternals` (ModuleDeclaration) not supported, not documented
-  - core/functions.ts:68: toOption: shows the type FxOptionInit (core/internal.ts), which has no page: export it from an entry point
+  - core/functions.ts:69: toOption: shows the type FxOptionInit (core/internal.ts), which has no page: export it from an entry point
   - format/upper.pipe.ts:6: FxUpperPipe: pipe name is not a string literal, its template usage is not documented
   - forms/text-field.ts:50: FxTextField.hint: undocumented input
   - forms/select.ts:14: FxSelect: `inputs` entry `missingProperty` has no matching class property (typo?)
@@ -24,6 +24,8 @@ agent-docs: 68 symbols from 9 entry point(s) → <scratch>/button
   - forms/date/date-range.ts:4: FxDateRange: templateUrl `./missing-template.html` not found, its content projection slots are not documented
   - overlay/dialog.service.ts:40: FxDialogService.closeAll: undocumented method
   - overlay/dialog.service.ts:26: FxDialogService.maxStack: undocumented static property
+  - overlay/confirm-dialog.ts:23: FxConfirmDialog: @see refers to internalHelper, which has no page: export it from an entry point
+  - overlay/confirm-dialog.ts:23: FxConfirmDialog: @see FxMissingDialog not found: import it in this file, or fix its name
   - overlay/toast.service.ts:12: FxToastService.position: undocumented property
   - overlay/highlight-card.ts:24: FxHighlightCard: bindings declared by the mixin `withHighlight(CardBase)` are not documented
   - overlay/highlight-card.ts:19: FxHighlightCard.outlined: undocumented input (declared by CardBase)

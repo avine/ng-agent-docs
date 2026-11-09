@@ -10,7 +10,7 @@ import { HiddenTypes } from './hidden-types.mts';
 import { fullBindings } from './host-directives.mts';
 import { readDoc } from './jsdoc.mts';
 import { constructorSection, documentedMethods, memberSections } from './members.mts';
-import { classLink, examples, header, hostDirectiveLine, memberList, paramSection } from './markdown.mts';
+import { classLink, examples, header, hostDirectiveLine, memberList, paramSection, seeAlso } from './markdown.mts';
 import { type Context, type Doc, type Entry, type Kind, type Library, type Member, NG_DECORATORS, type Owners, warn } from './model.mts';
 import { callSignatures, functionInitializer, overloadsOf, readFnDoc, signature } from './signatures.mts';
 import {
@@ -160,7 +160,7 @@ function describeClass(name: string, kind: Kind, cls: ClassDeclaration, ctx: Con
     lines.push(...memberSections(name, cls, lib, hidden));
   }
 
-  lines.push(...examples(doc));
+  lines.push(...examples(doc), ...seeAlso(name, doc, cls, ctx.page, owners));
   hidden.report(name, cls);
   return { name, kind, doc, ep: ctx.ep, page: ctx.page, selector, pipeName, markdown: lines.join('\n') };
 }
@@ -235,7 +235,7 @@ function kindOf(decl: Node): Kind | undefined {
  */
 function describeExternal(name: string, kind: Kind, decl: Node, ctx: Context): Entry {
   const pkg = packageOf(decl.getSourceFile().getFilePath());
-  const doc: Doc = { usage: [], avoid: [], replaces: [], examples: [], params: [], description: `Re-exported from \`${pkg}\`.` };
+  const doc: Doc = { usage: [], avoid: [], replaces: [], examples: [], params: [], see: [], description: `Re-exported from \`${pkg}\`.` };
   const markdown = [...header(name, kind, doc, ctx), '', `See the documentation of \`${pkg}\` for its API.`].join('\n');
   return { name, kind, doc, ep: ctx.ep, page: ctx.page, markdown };
 }
@@ -284,6 +284,7 @@ export function describe(name: string, decl: Node, ctx: Context, lib: Library): 
   hidden.report(name, decl);
 
   const params = Node.isFunctionDeclaration(decl) || Node.isVariableDeclaration(decl) ? paramSection(doc) : [];
-  const markdown = [...header(name, kind, doc, ctx), '', codeBlock('ts', body), ...params, ...examples(doc)].join('\n');
+  const see = seeAlso(name, doc, decl, ctx.page, lib.owners);
+  const markdown = [...header(name, kind, doc, ctx), '', codeBlock('ts', body), ...params, ...examples(doc), ...see].join('\n');
   return { name, kind, doc, ep: ctx.ep, page: ctx.page, markdown };
 }

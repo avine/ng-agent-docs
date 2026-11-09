@@ -9,6 +9,7 @@ export type FxPredicate<T> = (value: T) => boolean;
  *
  * Overloaded function: the JSDoc is on the first overload.
  * @category Formatting
+ * @see {@link round} to round without a currency (`@see` on a function page)
  * @example
  * ```ts
  * formatAmount(12.5); // '12.50 EUR'

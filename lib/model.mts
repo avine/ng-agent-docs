@@ -40,6 +40,9 @@ export interface Doc {
   params: { name: string; text: string }[]; // @param, for functions and methods
   returns?: string | undefined; // @returns
   defaultValue?: string | undefined; // @default, for an input without an initializer (setter, metadata)
+  see: string[]; // @see: related symbols or pages, as written
+  // Declarations the @see tags refer to, found by TypeScript, by reference as written: 'FxDialogRef.close'.
+  seeTargets?: ReadonlyMap<string, Node> | undefined;
 }
 
 /** One template binding: input, model or output. */

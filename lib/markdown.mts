@@ -1,5 +1,5 @@
 import { posix } from 'node:path';
-import type { Node } from 'ts-morph';
+import { Node } from 'ts-morph';
 import type { HostDirective } from './host-directives.mts';
 import {
   type BindingKind,
@@ -12,8 +12,9 @@ import {
   type Kind,
   type Member,
   type Owners,
+  warn,
 } from './model.mts';
-import { code, codeBlock, oneLine, summary } from './util.mts';
+import { code, codeBlock, oneLine, packageOf, summary } from './util.mts';
 
 // =============================================================================
 // Markdown rendering — the parts shared by every page, and the index.
@@ -114,6 +115,50 @@ export const examples = (doc: Doc) =>
   doc.examples.length
     ? ['', '## Examples', ...doc.examples.map((x) => (x.includes('```') ? x : codeBlock('html', x)))]
     : [];
+
+// `{@link Target}`, `{@link Target | label}` or `{@link Target label}`; also {@linkcode …} and {@linkplain …}.
+const LINK = /\{@link(code|plain)?\s+([^\s|}]+)\s*\|?\s*([^}]*)\}/g;
+// A symbol name that starts a @see tag, without {@link}: `@see FxDialogRef.close, to close it`.
+const LEADING_NAME = /^[A-Za-z_$][\w$]*(?:[.#][\w$]+)*(?=[\s,.;]|$)/;
+
+/**
+ * "See also" section, from the @see tags. A reference TypeScript resolves is linked to the page that
+ * documents it (a member: its class's page), a URL is linked, other text is kept as written:
+ *   - [FxDialogService](FxDialogService.md)
+ *   - [Opening a dialog](FxDialogService.md), then [FxDialogRef#close](FxDialogRef.md)
+ *   - NgStyle (`@angular/common`)
+ * Warns about a {@link} that cannot be resolved, and about a reference to a library symbol without a page.
+ * A bare name that cannot be resolved is taken as text: `@see the theming guide`.
+ */
+export function seeAlso(name: string, doc: Doc, at: Node, fromPage: string, owners: Owners): string[] {
+  if (!doc.see.length) return [];
+  const ref = (target: string, label: string, explicit: boolean, asCode = false): string | undefined => {
+    const text = asCode ? code(label) : label;
+    if (/^https?:\/\//.test(target)) return label === target ? `<${target}>` : `[${text}](${target})`;
+    const decl = doc.seeTargets?.get(target);
+    if (!decl) {
+      if (explicit) warn(`${name}: @see ${target} not found: import it in this file, or fix its name`, at);
+      return explicit ? text : undefined;
+    }
+    let owner: Node | undefined = decl;
+    while (owner && !Node.isSourceFile(owner) && !owners.has(owner)) owner = owner.getParent();
+    const page = owner && owners.get(owner)?.ctx.page;
+    if (page) return `[${text}](${posix.relative(posix.dirname(fromPage), page)})`;
+    if (decl.getSourceFile().isInNodeModules()) return `${text} (\`${packageOf(decl.getSourceFile().getFilePath())}\`)`;
+    warn(`${name}: @see refers to ${target}, which has no page: export it from an entry point`, at);
+    return `${text} (not exported by the library)`;
+  };
+  const items = doc.see.map((t) => {
+    const lead = LEADING_NAME.exec(t)?.[0];
+    const head = lead === undefined ? undefined : ref(lead, lead, false);
+    const rest = head === undefined ? t : t.slice(lead!.length);
+    const linked = rest.replace(LINK, (_, kind: string | undefined, target: string, label: string) =>
+      ref(target, label.trim() || target, true, kind === 'code')!,
+    );
+    return item((head ?? '') + linked);
+  });
+  return ['', '## See also', ...items];
+}
 
 // =============================================================================
 // Index — one section per entry point, then one sub-section per kind

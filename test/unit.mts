@@ -29,6 +29,7 @@ describe('parseJsDoc', () => {
   test('our tags can follow text on one line, not in inline code', () => {
     assert.deepEqual(parseJsDoc('Old. @deprecated Use `@usage` tags.').tags, [{ name: 'deprecated', text: 'Use `@usage` tags.' }]);
     assert.equal(parseJsDoc('Uses `x @deprecated y`.').description, 'Uses `x @deprecated y`.');
+    assert.deepEqual(parseJsDoc('Dialog. @see {@link FxDialogRef}').tags, [{ name: 'see', text: '{@link FxDialogRef}' }]);
   });
 
   test('a decorator in the description is not a tag', () => {
