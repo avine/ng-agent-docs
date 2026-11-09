@@ -8,6 +8,7 @@ Range of numbers, bounds included. Plain class: its constructor and static membe
 - `new FxRange(min: number, max?: number)` — Creates a range.
   - `min`: Lower bound.
   - `max`: Upper bound, `min` by default.
+  - **see**: [FxRange.parse](FxRange.md), to read a range from text: listed under the constructor, here and on FxPercentRange
 
 ## Properties
 - `readonly size: number` — Number of values. Getter without a setter: listed as read-only.

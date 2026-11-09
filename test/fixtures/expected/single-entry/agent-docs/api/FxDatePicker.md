@@ -14,7 +14,9 @@ Its template contains `${}`: a constant (`PREFIX`) is replaced with its value, s
 ## Inputs
 - `[min]: Date | undefined` — Earliest selectable date.
 - `[label]: string` = `''` · inherited from FxFieldBase — Label of the field.
+  - **see**: [Labeling controls](https://www.w3.org/WAI/tutorials/forms/labels/), listed under the input, here and on each subclass
 - `[disabled]: boolean` = `false` · transform: booleanAttribute · inherited from FxFieldBase — Disables the field.
+  - **see**: FxMissingAttribute: warning once, on this page, not on the page of each subclass
 - `[width]: string | number` · inherited from FxFieldBase — Width: a number of pixels or a CSS length. The getter always returns a CSS length: an inherited setter input keeps the setter's type.
 - `[placeholder]: string | undefined` · inherited from FxFieldBase — Text shown while the field is empty. Metadata input of the base class: inherited too.
 - `[hint]: string` **required** · from host directive FxTooltip — Text of the tooltip.
@@ -38,3 +40,4 @@ Applied to every instance. Only the bindings listed here can be used in template
 
 ## Public methods (via viewChild or exportAs)
 - `focus(): void` · inherited from FxFieldBase — Focuses the field. Inherited: listed on the page of each field.
+  - **see**: FxMissingFocus: warning once, on this page, not on the page of each subclass

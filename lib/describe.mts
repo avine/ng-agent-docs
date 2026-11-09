@@ -9,8 +9,8 @@ import {
 import { HiddenTypes } from './hidden-types.mts';
 import { fullBindings } from './host-directives.mts';
 import { readDoc } from './jsdoc.mts';
-import { constructorSection, documentedMethods, memberSections } from './members.mts';
-import { classLink, examples, header, hostDirectiveLine, memberList, paramSection, seeAlso } from './markdown.mts';
+import { constructorSection, documentedMethods, memberSections, type PageRef } from './members.mts';
+import { classLink, examples, header, hostDirectiveLine, memberList, paramSection, seeAlso, seeItems } from './markdown.mts';
 import { type Context, type Doc, type Entry, type Kind, type Library, type Member, NG_DECORATORS, type Owners, warn } from './model.mts';
 import { callSignatures, functionInitializer, overloadsOf, readFnDoc, signature } from './signatures.mts';
 import {
@@ -83,6 +83,7 @@ function slots(name: string, cls: ClassDeclaration, meta?: ObjectLiteralExpressi
 /** Classes: components, directives, pipes, services, or plain classes, based on their Angular decorator. */
 function describeClass(name: string, kind: Kind, cls: ClassDeclaration, ctx: Context, lib: Library): Entry {
   const { owners } = lib;
+  const page: PageRef = { name, page: ctx.page, owners };
   const hidden = new HiddenTypes(lib);
   const doc = readDoc(cls);
   const meta = metadata(ngDecorator(cls));
@@ -104,9 +105,15 @@ function describeClass(name: string, kind: Kind, cls: ClassDeclaration, ctx: Con
         ? 'No selector: base class, extend it instead of using it in a template.'
         : 'No selector: not used in a template, created from code (a route, a dialog, `ViewContainerRef.createComponent()`).';
     lines.push(...header(name, kind, doc, ctx, [selectorLine]));
-    lines.push(...memberList('Inputs', 'input', inputs));
-    lines.push(...memberList('Outputs', 'output', outputs));
-    lines.push(...memberList('Two-way bindings (model)', 'model', models, 'Each one also works as `[name]` + `(nameChange)`.'));
+    // An inherited or exposed binding is reported on the page of the class that declares it (see below).
+    const reportedElsewhere = (m: Member) => {
+      const origin = m.fromHostDirective ?? m.inheritedFrom;
+      return !!origin && (owners.has(origin) || origin.getSourceFile().isInNodeModules());
+    };
+    const see = (m: Member) => (m.decl ? seeItems(`${name}.${m.name}`, readDoc(m.decl), m.decl, ctx.page, owners, reportedElsewhere(m)) : []);
+    lines.push(...memberList('Inputs', 'input', inputs, see));
+    lines.push(...memberList('Outputs', 'output', outputs, see));
+    lines.push(...memberList('Two-way bindings (model)', 'model', models, see, 'Each one also works as `[name]` + `(nameChange)`.'));
     if (directives.length) {
       lines.push(
         '',
@@ -121,7 +128,7 @@ function describeClass(name: string, kind: Kind, cls: ClassDeclaration, ctx: Con
       if (s.length) lines.push('', '## Content projection (ng-content)', ...s.map((x) => `- \`${x}\``));
     }
     // Only methods WITH a JSDoc description: undocumented public methods are usually template handlers.
-    const methods = documentedMethods(cls, hidden);
+    const methods = documentedMethods(page, cls, hidden);
     if (methods.length) lines.push('', '## Public methods (via viewChild or exportAs)', ...methods);
 
     // Documentation completeness checks (fail the run in --strict mode). The class description is
@@ -129,8 +136,8 @@ function describeClass(name: string, kind: Kind, cls: ClassDeclaration, ctx: Con
     // declares it, or here if that class has no page (not exported). Another package's docs are not checked.
     const undocumented = (list: Member[], what: string) => {
       for (const m of list) {
+        if (m.description || reportedElsewhere(m)) continue;
         const origin = m.fromHostDirective ?? m.inheritedFrom;
-        if (m.description || (origin && (owners.has(origin) || origin.getSourceFile().isInNodeModules()))) continue;
         warn(`${name}.${m.name}: undocumented ${what}${origin ? ` (declared by ${origin.getName()})` : ''}`, m.decl ?? cls);
       }
     };
@@ -156,8 +163,8 @@ function describeClass(name: string, kind: Kind, cls: ClassDeclaration, ctx: Con
     });
     lines.push(...header(name, kind, doc, ctx, provided));
     if (kind === 'module') lines.push(...moduleExports(name, meta, ctx, lib));
-    if (kind === 'class') lines.push(...constructorSection(name, cls, hidden));
-    lines.push(...memberSections(name, cls, lib, hidden));
+    if (kind === 'class') lines.push(...constructorSection(page, cls, hidden));
+    lines.push(...memberSections(page, cls, hidden));
   }
 
   lines.push(...examples(doc), ...seeAlso(name, doc, cls, ctx.page, owners));

@@ -103,13 +103,14 @@ Everything comes from the library's sources:
 | `@deprecated` | Deprecation message. |
 | `@param`, `@returns` | Parameters and return value of a function, method or pipe. |
 | `@default` | Default value of an input whose default is not in the code (setter, `inputs` metadata). |
-| `@see` | Related symbol or page, listed under "See also". One tag per reference. |
+| `@see` | Related symbol or page, listed under "See also"; on a member (method, property, constructor, input, output, model), under that member. One tag per reference. |
 
 `@see FxTooltip` and `@see {@link FxTooltip}` link to the page of `FxTooltip`, from any entry point; a
 member (`{@link FxDialogRef.close}`, or `FxDialogRef#close`) links to its class's page. TypeScript resolves
 the name as for "Go to definition": it must be declared or imported in the file. `{@link FxTooltip | the
 tooltip}` sets the link text, and a URL becomes a link. Other text is kept as written: `@see the theming
-guide`. A symbol of another package is named with its package, not linked.
+guide`. A symbol of another package is named with its package, not linked. A broken `@see` on an
+inherited member is reported once, on the page of the class that declares it.
 
 An entry point gets a description from a `@packageDocumentation` block at the top of its entry file:
 

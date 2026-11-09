@@ -9,8 +9,8 @@ import {
 } from 'ts-morph';
 import type { HiddenTypes } from './hidden-types.mts';
 import { readDoc } from './jsdoc.mts';
-import { paramItems } from './markdown.mts';
-import { type Library, warn } from './model.mts';
+import { paramItems, seeItems } from './markdown.mts';
+import { type Doc, type Owners, warn } from './model.mts';
 import { callSignatures, overloadsOf, readFnDoc, signature } from './signatures.mts';
 import { code, firstParagraph, isPublic, isPublicStatic, packageOf, typeText } from './util.mts';
 
@@ -21,6 +21,13 @@ import { code, firstParagraph, isPublic, isPublicStatic, packageOf, typeText } f
 export const LIFECYCLE = /^ng(OnInit|OnChanges|DoCheck|AfterContentInit|AfterContentChecked|AfterViewInit|AfterViewChecked|OnDestroy)$/;
 
 type Prop = PropertyDeclaration | GetAccessorDeclaration;
+
+/** The page being written: the class name, its file (the links of @see tags are relative to it), and every page. */
+export interface PageRef {
+  name: string;
+  page: string;
+  owners: Owners;
+}
 
 /** One public member, and the base class that declares it when it is inherited. */
 interface ClassMember {
@@ -75,12 +82,19 @@ function classMembers(cls: ClassDeclaration): ClassMember[] {
 }
 
 /**
- * Lines of one member, with its description. An inherited member is read through the class, so the
- * base's type parameters are resolved: `FxStoreBase<T>.items: T[]` is `items: FxOption[]` on a subclass of
- * `FxStoreBase<FxOption>`.
+ * Lines of one member, with its description and its @see tags. An inherited member is read through the
+ * class, so the base's type parameters are resolved: `FxStoreBase<T>.items: T[]` is `items: FxOption[]` on
+ * a subclass of `FxStoreBase<FxOption>`. Its @see tags are checked on the page of the class that declares
+ * it, or here if that class has no page.
  */
-function memberLines(cls: ClassDeclaration, { member, isStatic, base }: ClassMember, hidden: HiddenTypes): { lines: string[]; documented: boolean } {
+function memberLines(
+  p: PageRef,
+  cls: ClassDeclaration,
+  { member, isStatic, base }: ClassMember,
+  hidden: HiddenTypes,
+): { lines: string[]; documented: boolean } {
   const name = member.getName();
+  const see = (doc: Doc) => seeItems(`${p.name}.${name}`, doc, member, p.page, p.owners, !!base && p.owners.has(base));
   const from = base ? ` · inherited from ${base.getName()}` : '';
   const prefix = isStatic ? 'static ' : '';
   // Through the class: its type arguments applied. Static members cannot use the type parameters.
@@ -92,7 +106,7 @@ function memberLines(cls: ClassDeclaration, { member, isStatic, base }: ClassMem
     hidden.scan(...overloadsOf(member));
     const signatures = resolved ? callSignatures(`${prefix}${name}`, resolved, cls) : signature(`${prefix}${name}`, member);
     const lines = signatures.map((s) => `- ${code(s)}${from}${d ? ` — ${firstParagraph(d)}` : ''}`);
-    return { lines: [...lines, ...paramItems(fnDoc)], documented: !!d };
+    return { lines: [...lines, ...paramItems(fnDoc), ...see(fnDoc)], documented: !!d };
   }
   if (Node.isParameterDeclaration(member)) {
     const type = resolved ?? member.getType();
@@ -105,9 +119,10 @@ function memberLines(cls: ClassDeclaration, { member, isStatic, base }: ClassMem
     (Node.isPropertyDeclaration(member) && member.isReadonly()) || (Node.isGetAccessorDeclaration(member) && !member.getSetAccessor());
   const type = resolved ?? (Node.isGetAccessorDeclaration(member) ? member.getReturnType() : member.getType());
   hidden.scan(member);
-  const d = readDoc(member).description;
+  const doc = readDoc(member);
+  const d = doc.description;
   const text = `${prefix}${readonly ? 'readonly ' : ''}${name}: ${typeText(type, base ? cls : member)}`;
-  return { lines: [`- ${code(text)}${from}${d ? ` — ${firstParagraph(d)}` : ''}`], documented: !!d };
+  return { lines: [`- ${code(text)}${from}${d ? ` — ${firstParagraph(d)}` : ''}`, ...see(doc)], documented: !!d };
 }
 
 /**
@@ -118,16 +133,17 @@ function memberLines(cls: ClassDeclaration, { member, isStatic, base }: ClassMem
  * Completeness check (fails the run in --strict mode): every member needs a description. An inherited one
  * is reported on the page of the class that declares it, or here if that class has no page.
  */
-export function memberSections(name: string, cls: ClassDeclaration, lib: Library, hidden: HiddenTypes): string[] {
+export function memberSections(p: PageRef, cls: ClassDeclaration, hidden: HiddenTypes): string[] {
+  const { name } = p;
   const heritage = cls.getExtends();
   if (heritage && !cls.getBaseClass()) {
     warn(`${name}: base class \`${heritage.getText()}\` not resolved, its members are not documented`, heritage);
   }
   const sections = { properties: [] as string[], methods: [] as string[], statics: [] as string[] };
   for (const m of classMembers(cls)) {
-    const { lines, documented } = memberLines(cls, m, hidden);
+    const { lines, documented } = memberLines(p, cls, m, hidden);
     const what = `${m.isStatic ? 'static ' : ''}${Node.isMethodDeclaration(m.member) ? 'method' : 'property'}`;
-    if (!documented && !(m.base && lib.owners.has(m.base))) {
+    if (!documented && !(m.base && p.owners.has(m.base))) {
       warn(`${name}.${m.member.getName()}: undocumented ${what}${m.base ? ` (declared by ${m.base.getName()})` : ''}`, m.member);
     }
     (m.isStatic ? sections.statics : Node.isMethodDeclaration(m.member) ? sections.methods : sections.properties).push(...lines);
@@ -146,17 +162,18 @@ export function memberSections(name: string, cls: ClassDeclaration, lib: Library
  * Public methods of a component or directive that have a description, own and inherited: undocumented ones
  * are usually template handlers. Called through viewChild or exportAs.
  */
-export function documentedMethods(cls: ClassDeclaration, hidden: HiddenTypes): string[] {
+export function documentedMethods(p: PageRef, cls: ClassDeclaration, hidden: HiddenTypes): string[] {
   return classMembers(cls)
     .filter((m) => !m.isStatic && Node.isMethodDeclaration(m.member) && readFnDoc(m.member).description)
-    .flatMap((m) => memberLines(cls, m, hidden).lines);
+    .flatMap((m) => memberLines(p, cls, m, hidden).lines);
 }
 
 /**
  * Constructor of a plain class, the one way to create it: `new FxRange(min: number, max?: number)`, its own
  * or the one it inherits. A constructor that is not public is noted: the consumer gets instances some other way.
  */
-export function constructorSection(name: string, cls: ClassDeclaration, hidden: HiddenTypes): string[] {
+export function constructorSection(p: PageRef, cls: ClassDeclaration, hidden: HiddenTypes): string[] {
+  const { name } = p;
   if (cls.isAbstract()) return [];
   const owner = sourceChain(cls).chain.find((c) => c.getConstructors().length);
   const ctor = owner?.getConstructors()[0];
@@ -168,5 +185,7 @@ export function constructorSection(name: string, cls: ClassDeclaration, hidden: 
   const from = owner === cls ? '' : ` · inherited from ${owner.getName()}`;
   hidden.scan(...overloadsOf(ctor));
   const lines = signature(name, ctor).map((s) => `- ${code(s)}${from}${fnDoc.description ? ` — ${firstParagraph(fnDoc.description)}` : ''}`);
-  return ['', '## Constructor', ...lines, ...paramItems(fnDoc)];
+  const quiet = owner !== cls && p.owners.has(owner);
+  const see = seeItems(`${name} constructor`, fnDoc, ctor, p.page, p.owners, quiet);
+  return ['', '## Constructor', ...lines, ...paramItems(fnDoc), ...see];
 }

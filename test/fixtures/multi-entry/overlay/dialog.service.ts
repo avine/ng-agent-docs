@@ -12,7 +12,10 @@ export class FxDialogService implements OnDestroy {
   /** Number of open dialogs. */
   readonly openCount = this.count.asReadonly();
 
-  /** Width used when `open()` gets none. Mutable public property. */
+  /**
+   * Width used when `open()` gets none. Mutable public property.
+   * @see {@link https://m3.material.io/components/dialogs/specs | Dialog specs}, listed under the property
+   */
   defaultWidth = '480px';
 
   /** Whether at least one dialog is open. Getter. */
@@ -31,6 +34,7 @@ export class FxDialogService implements OnDestroy {
    * @param data Passed to the component, through `FxDialogRef`.
    * @returns A reference to close the dialog
    *   and read its result.
+   * @see FxDialogRef#close, to close it: listed under the method, after its parameters
    */
   open<R>(component: Type<unknown>, data?: unknown): FxDialogRef<R> {
     this.#opened++;

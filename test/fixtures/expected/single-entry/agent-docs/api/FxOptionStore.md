@@ -14,4 +14,5 @@ the base's `T` resolved (`FxOption[]`, not `T[]`).
 - `describe(): string` — Describes the store. Replaces the inherited one.
 - `add(item: FxOption<string>): void` · inherited from FxStoreBase — Adds an item.
   - `item`: Item to add.
+  - **see**: FxMissingItem: warning on the page of FxOptionStore, as FxStoreBase has none
 - `clear(): void` · inherited from FxStoreBase

@@ -66,13 +66,18 @@ const BINDING_SYNTAX: Record<BindingKind, (name: string) => string> = {
  *   - `[loading]: boolean` = `false` · transform: booleanAttribute — Shows a spinner.
  *   - `[max]: number` · transform: toNumber · accepts: `string | number` — Maximum value.
  *   - `[kind]: Variant | undefined` ⚠️ deprecated: Use `variant`. — Old name of `variant`.
- * Missing facts are left out.
+ * Missing facts are left out. `subItems` follow each item: its @see tags.
  */
-export function memberList(title: string, binding: BindingKind, list: Member[], note?: string): string[] {
+export function memberList(
+  title: string,
+  binding: BindingKind,
+  list: Member[],
+  subItems: (m: Member) => string[],
+  note?: string,
+): string[] {
   if (!list.length) return [];
-  const items = list.map(
-    (m) =>
-      `- ${code(`${BINDING_SYNTAX[binding](m.name)}: ${m.type}`)}` +
+  const items = list.flatMap((m) => [
+    `- ${code(`${BINDING_SYNTAX[binding](m.name)}: ${m.type}`)}` +
       (m.required ? ' **required**' : '') +
       (m.default ? ` = ${code(m.default)}` : '') +
       (m.transform ? ` · transform: ${m.transform}` : '') +
@@ -81,7 +86,8 @@ export function memberList(title: string, binding: BindingKind, list: Member[], 
       (m.fromHostDirective ? ` · from host directive ${m.fromHostDirective.getName()}` : '') +
       (m.deprecated !== undefined ? ` ⚠️ deprecated${m.deprecated ? `: ${oneLine(m.deprecated)}` : ''}` : '') +
       (m.description ? ` — ${oneLine(m.description)}` : ''),
-  );
+    ...subItems(m),
+  ]);
   return ['', `## ${title}`, ...(note ? [note, ''] : []), ...items];
 }
 
@@ -122,22 +128,25 @@ const LINK = /\{@link(code|plain)?\s+([^\s|}]+)\s*\|?\s*([^}]*)\}/g;
 const LEADING_NAME = /^[A-Za-z_$][\w$]*(?:[.#][\w$]+)*(?=[\s,.;]|$)/;
 
 /**
- * "See also" section, from the @see tags. A reference TypeScript resolves is linked to the page that
+ * The @see tags of a JSDoc block, one text each. A reference TypeScript resolves is linked to the page that
  * documents it (a member: its class's page), a URL is linked, other text is kept as written:
- *   - [FxDialogService](FxDialogService.md)
- *   - [Opening a dialog](FxDialogService.md), then [FxDialogRef#close](FxDialogRef.md)
- *   - NgStyle (`@angular/common`)
- * Warns about a {@link} that cannot be resolved, and about a reference to a library symbol without a page.
+ *   [FxDialogService](FxDialogService.md)
+ *   [Opening a dialog](FxDialogService.md), then [FxDialogRef#close](FxDialogRef.md)
+ *   NgStyle (`@angular/common`)
+ * Warns about a {@link} that cannot be resolved, and about a reference to a library symbol without a page,
+ * unless `quiet`: an inherited member is reported on the page of the class that declares it.
  * A bare name that cannot be resolved is taken as text: `@see the theming guide`.
  */
-export function seeAlso(name: string, doc: Doc, at: Node, fromPage: string, owners: Owners): string[] {
-  if (!doc.see.length) return [];
+function seeRefs(name: string, doc: Doc, at: Node, fromPage: string, owners: Owners, quiet = false): string[] {
+  const report = (message: string) => {
+    if (!quiet) warn(message, at);
+  };
   const ref = (target: string, label: string, explicit: boolean, asCode = false): string | undefined => {
     const text = asCode ? code(label) : label;
     if (/^https?:\/\//.test(target)) return label === target ? `<${target}>` : `[${text}](${target})`;
     const decl = doc.seeTargets?.get(target);
     if (!decl) {
-      if (explicit) warn(`${name}: @see ${target} not found: import it in this file, or fix its name`, at);
+      if (explicit) report(`${name}: @see ${target} not found: import it in this file, or fix its name`);
       return explicit ? text : undefined;
     }
     let owner: Node | undefined = decl;
@@ -145,20 +154,33 @@ export function seeAlso(name: string, doc: Doc, at: Node, fromPage: string, owne
     const page = owner && owners.get(owner)?.ctx.page;
     if (page) return `[${text}](${posix.relative(posix.dirname(fromPage), page)})`;
     if (decl.getSourceFile().isInNodeModules()) return `${text} (\`${packageOf(decl.getSourceFile().getFilePath())}\`)`;
-    warn(`${name}: @see refers to ${target}, which has no page: export it from an entry point`, at);
+    report(`${name}: @see refers to ${target}, which has no page: export it from an entry point`);
     return `${text} (not exported by the library)`;
   };
-  const items = doc.see.map((t) => {
+  return doc.see.map((t) => {
     const lead = LEADING_NAME.exec(t)?.[0];
     const head = lead === undefined ? undefined : ref(lead, lead, false);
     const rest = head === undefined ? t : t.slice(lead!.length);
     const linked = rest.replace(LINK, (_, kind: string | undefined, target: string, label: string) =>
       ref(target, label.trim() || target, true, kind === 'code')!,
     );
-    return item((head ?? '') + linked);
+    return (head ?? '') + linked;
   });
-  return ['', '## See also', ...items];
 }
+
+/** "See also" section of a page, from its @see tags (see seeRefs). */
+export function seeAlso(name: string, doc: Doc, at: Node, fromPage: string, owners: Owners): string[] {
+  const refs = seeRefs(name, doc, at, fromPage, owners);
+  return refs.length ? ['', '## See also', ...refs.map((r) => item(r))] : [];
+}
+
+/**
+ * The same, as sub-items of a member in a list (method, property, constructor, binding), one per tag:
+ *   - `close(result?: R): void` — Closes the dialog.
+ *     - **see**: [FxDialogService](FxDialogService.md)
+ */
+export const seeItems = (name: string, doc: Doc, at: Node, fromPage: string, owners: Owners, quiet = false) =>
+  seeRefs(name, doc, at, fromPage, owners, quiet).map((r) => item(`**see**: ${r}`, '  '));
 
 // =============================================================================
 // Index — one section per entry point, then one sub-section per kind

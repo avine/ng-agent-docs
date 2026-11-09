@@ -9,6 +9,7 @@ export abstract class FxStoreBase<T> {
   /**
    * Adds an item.
    * @param item Item to add.
+   * @see {@link FxMissingItem}: warning on the page of FxOptionStore, as FxStoreBase has none
    */
   add(item: T): void {
     this.items.update((list) => [...list, item]);

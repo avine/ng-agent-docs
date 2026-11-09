@@ -8,10 +8,16 @@ import { booleanAttribute, Directive, Input, input, model } from '@angular/core'
  */
 @Directive({ inputs: ['placeholder'] })
 export abstract class FxFieldBase<T = unknown> {
-  /** Label of the field. */
+  /**
+   * Label of the field.
+   * @see {@link https://www.w3.org/WAI/tutorials/forms/labels/ | Labeling controls}, listed under the input, here and on each subclass
+   */
   readonly label = input('');
 
-  /** Disables the field. */
+  /**
+   * Disables the field.
+   * @see {@link FxMissingAttribute}: warning once, on this page, not on the page of each subclass
+   */
   readonly disabled = input(false, { transform: booleanAttribute });
 
   /** Value of the field. Its type comes from the subclass. */
@@ -33,6 +39,9 @@ export abstract class FxFieldBase<T = unknown> {
   }
   private cssWidth = 'auto';
 
-  /** Focuses the field. Inherited: listed on the page of each field. */
+  /**
+   * Focuses the field. Inherited: listed on the page of each field.
+   * @see {@link FxMissingFocus}: warning once, on this page, not on the page of each subclass
+   */
   focus(): void {}
 }
