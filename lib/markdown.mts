@@ -42,7 +42,7 @@ export function header(name: string, kind: Kind, doc: Doc, ctx: Context, extra: 
 /** Parameters and return value of a function or pipe page, from @param and @returns. */
 export const paramSection = (doc: Doc) => [
   ...(doc.params.length ? ['', '## Parameters', ...doc.params.map((p) => item(`\`${p.name}\`${p.text ? ` — ${p.text}` : ''}`))] : []),
-  ...(doc.returns ? ['', `Returns: ${doc.returns}`] : []),
+  ...(doc.returns ? ['', '## Returns', doc.returns] : []),
 ];
 
 /** The same, as sub-items of a method in a list: one line each. */

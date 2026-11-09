@@ -16,4 +16,5 @@ transform(value: null | undefined, currency?: string): null
 - `value` — Amount to format; `null` or `undefined` gives `null`.
 - `currency` — ISO 4217 code, `EUR` by default.
 
-Returns: The amount and its currency, e.g. `12.50 EUR`.
+## Returns
+The amount and its currency, e.g. `12.50 EUR`.

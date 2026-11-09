@@ -12,4 +12,5 @@ toOption<T>(value: T, init?: FxOptionInit): FxOption<T>
 - `value` — Value sent to the form.
 - `init` — Label and state: `FxOptionInit` has no page, a "shows the type" warning.
 
-Returns: The option, ready for `fx-select`.
+## Returns
+The option, ready for `fx-select`.
