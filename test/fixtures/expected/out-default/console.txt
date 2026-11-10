@@ -1,7 +1,7 @@
 $ ng-agent-docs --root <scratch>/lib
 
 --- stdout
-agent-docs: 68 symbols from 1 entry point(s) → <scratch>/dist/lib/agent-docs
+agent-docs: 69 symbols from 1 entry point(s) → <scratch>/dist/lib/agent-docs
 --- stderr
 
 29 warning(s):
@@ -36,7 +36,7 @@ agent-docs: 68 symbols from 1 entry point(s) → <scratch>/dist/lib/agent-docs
   - src/lib/format/initials.pipe.ts:4: FxInitialsPipe: missing JSDoc description
 ---
 exit code: 0
-dist/lib/: 70 file(s)
+dist/lib/: 71 file(s)
   agent-docs/index.md
   package.json
-  agent-docs/api/: 68 page(s)
+  agent-docs/api/: 69 page(s)

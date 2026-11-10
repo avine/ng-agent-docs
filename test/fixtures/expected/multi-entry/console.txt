@@ -1,10 +1,10 @@
 $ ng-agent-docs --root multi-entry --out <out>
 
 --- stdout
-agent-docs: 68 symbols from 9 entry point(s) → <out>
+agent-docs: 69 symbols from 9 entry point(s) → <out>
 --- stderr
 
-31 warning(s):
+32 warning(s):
   - broken/ng-package.json: broken: entry file not found (broken/index.ts)
   - utils/src/public_api.ts: @fixtures/multi-entry/utils: default export not documented, export it by name
   - utils/src/public_api.ts: @fixtures/multi-entry/utils: export `missingHelper` could not be resolved, not documented
@@ -36,5 +36,6 @@ agent-docs: 68 symbols from 9 entry point(s) → <out>
   - button/badge.ts:4: FxBadge: missing JSDoc description
   - core/types/size.ts:23: FxId: missing JSDoc description
   - format/initials.pipe.ts:4: FxInitialsPipe: missing JSDoc description
+  - forms/index.ts: @fixtures/multi-entry/forms: entry point without a description in index.md: add a @packageDocumentation block at the top of its entry file
 ---
 exit code: 0

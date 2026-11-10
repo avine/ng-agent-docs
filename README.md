@@ -10,11 +10,14 @@ source. `ng-agent-docs` turns the library's public API into small markdown files
 package:
 
 ```
-agent-docs/index.md                  catalog: one line per symbol, grouped by entry point
+agent-docs/index.md                  catalog: one line per entry point
+agent-docs/api/<entry>/index.md      one line per symbol of that entry point
 agent-docs/api/<entry>/<Symbol>.md   one symbol: import, selector, inputs, outputs, slots, usage, examples
 ```
 
-The agent reads the index, then only the page it needs.
+The agent reads the catalog, then the index of each entry point its task needs, then only the pages it
+needs: a library with hundreds of symbols does not fill its context with all of them. A library with a
+single entry point has no `api/<entry>/index.md`: `index.md` lists its symbols directly.
 
 It works with a single entry point (one `public-api.ts`) and with ng-packagr secondary entry points,
 and reads both decorator bindings (`@Input()`, `@Output()`) and signal bindings (`input()`, `model()`,
@@ -45,9 +48,10 @@ In the workspace's `package.json`:
 `--strict` fails the build when the docs are incomplete, so an incomplete package is never published.
 Incomplete means a symbol without a description, an undocumented input, output, or public member of a
 service or class, or a page that shows a type of the library that has no page (`add(opts: AddOptions)`
-with `AddOptions` exported by no entry point: the agent cannot look it up). A `@see` that refers to a
-symbol of the library without a page, or a `{@link}` that TypeScript cannot resolve (not imported, or
-misspelled), is reported too. A component's undocumented public methods are not counted: they are template
+with `AddOptions` exported by no entry point: the agent cannot look it up), or, with several entry
+points, one without a description (see below): `index.md` gives the agent nothing else to choose it. A
+`@see` that refers to a symbol of the library without a page, or a `{@link}` that TypeScript cannot
+resolve (not imported, or misspelled), is reported too. A component's undocumented public methods are not counted: they are template
 handlers.
 
 Each warning starts with the file and line to fix, relative to `--root`:
@@ -66,8 +70,8 @@ built `package.json`.
 | `--root <dir>`             | Library folder, the one containing `ng-package.json` and `package.json`. Required.                                                                                            |
 | `--tsconfig <file>`        | Default: `<root>/tsconfig.lib.json`.                                                                                                                                          |
 | `--out <dir>`              | Default: `<dest>/agent-docs`, `dest` coming from `<root>/ng-package.json` (ng-packagr's default: `dist`). Without `--out`, the command stops if the library is not built yet. |
-| `--note <text>`            | Line added at the top of the index, for the agent. Repeatable.                                                                                                                |
-| `--extra-docs <dir>`       | Hand-written docs, copied to `agent-docs/extra-docs/` and linked at the end of the index. The folder can have any name, and must contain an `index.md`.                       |
+| `--note <text>`            | Line added at the top of `index.md`, for the agent. Repeatable.                                                                                                               |
+| `--extra-docs <dir>`       | Hand-written docs, copied to `agent-docs/extra-docs/` and linked at the end of `index.md`. The folder can have any name, and must contain an `index.md`.                      |
 | `--extra-docs-note <text>` | Line shown between the heading of that last section and its link. Repeatable. Needs `--extra-docs`.                                                                           |
 | `--strict`                 | Exit code 1 when documentation is missing (warnings).                                                                                                                         |
 | `-h`, `--help`             | Show the options.                                                                                                                                                             |
@@ -121,6 +125,10 @@ An entry point gets a description from a `@packageDocumentation` block at the to
 /** Form fields built on Signal Forms. @packageDocumentation */
 ```
 
+Its first sentence is shown in `index.md`, next to the entry point: write it so that an agent can tell
+whether its task needs that entry point. The whole block, paragraphs included, is shown at the top of
+the entry point's own index (`api/<entry>/index.md`).
+
 For a legacy library being replaced, tell agents which library to prefer:
 
 ```bash
@@ -161,8 +169,8 @@ In their `CLAUDE.md` or `AGENTS.md`:
 ```md
 ## @acme/ui
 
-API: read node_modules/@acme/ui/agent-docs/index.md,
-then only the relevant api/.../<Symbol>.md file. Read @acme/ui's .d.ts files only if that page does not answer.
+API: read node_modules/@acme/ui/agent-docs/index.md, then the index of each entry point you need,
+then only the relevant api/.../<Symbol>.md files. Read @acme/ui's .d.ts files only if that page does not answer.
 ```
 
 The `exports` field that ng-packagr writes only limits imports: agents can still read

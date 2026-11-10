@@ -79,6 +79,7 @@ Import each symbol from the entry point given in its section heading.
 - [fxSize](api/fxSize-2.md) — Default size, as a value.
 - [FxTheme](api/FxTheme.md) — Default theme.
 - [identity](api/identity.md) — Returns its argument.
+- [index](api/index-2.md) — Index of the first row.
 - [isEmpty](api/isEmpty.md) — Tells whether a string is empty.
 - [isEven](api/isEven.md) — Tells whether a number is even.
 - [isOdd](api/isOdd.md) — Tells whether a number is odd.

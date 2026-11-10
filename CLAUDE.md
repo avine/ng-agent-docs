@@ -5,8 +5,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## What this is
 
 `ng-agent-docs` is a CLI that reads an Angular library's sources (via ts-morph) and writes `agent-docs/`:
-an `index.md` catalog plus one Markdown page per exported symbol (`api/<entry slug>/<Symbol>.md`), meant
-to be shipped in the built package for AI agents. User-facing behavior (options, JSDoc tags, exit codes,
+an `index.md` catalog (one line per entry point; one line per symbol when a single entry point has pages),
+one index per entry point (`api/<entry slug>/index.md`, only with several) and one Markdown page per
+exported symbol (`api/<entry slug>/<Symbol>.md`), meant to be shipped in the built package for AI agents. User-facing behavior (options, JSDoc tags, exit codes,
 `--strict` warnings) is specified in [README.md](README.md); keep it in sync with any behavior change.
 
 ## Commands
@@ -45,14 +46,16 @@ maps every module in [lib/](lib/). The pipeline:
    to its source entry file, so cross-entry-point imports resolve to sources, not `dist/`.
 2. **Assign owners** — every exported declaration (via `getExportedDeclarations()`, which follows
    `export *`) gets exactly one owner entry point (deepest one containing its file) and one page name.
-   Pages differing only by case get `-2`, `-3` suffixes. The `Owners` map is computed for all symbols
+   Pages differing only by case get `-2`, `-3` suffixes; `index.md` is reserved in every folder (a symbol
+   named `index` gets `index-2.md`). The `Owners` map is computed for all symbols
    _before_ any page is described, so pages can link to each other and detect "hidden types".
 3. **Describe** — `describe.mts` turns one declaration into an `Entry` (kind + Markdown), using
    `jsdoc.mts` (custom tags), `signatures.mts`, `bindings.mts` (decorator and signal inputs/outputs/models,
    including inherited), `host-directives.mts`, `members.mts`, `hidden-types.mts` (library types shown on a
    page that have no page of their own → warning) and `markdown.mts` (shared rendering + the index).
    Multiple declarations sharing a name (e.g. interface + const) are merged into one page.
-4. **Write** — wipe the output folder, write pages, copy `--extra-docs`, write `index.md`, print warnings.
+4. **Write** — wipe the output folder, write pages, copy `--extra-docs`, write `index.md` (and the entry
+   point indexes, warning about an entry point without `@packageDocumentation`), print warnings.
 
 Warnings are pushed to a module-level array in `model.mts` via `warn(message, node|file)`; they carry a
 file and line and are printed relative to `--root`. Every export must end up with a page or a warning —
