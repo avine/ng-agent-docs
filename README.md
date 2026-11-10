@@ -1,5 +1,7 @@
 # ng-agent-docs
 
+> This script was vibe coded with Claude Code (Opus 5.5, high effort).
+
 Generates compact, per-symbol API docs from an Angular library's JSDoc, so AI agents read only what
 they need instead of the `.d.ts` files.
 
