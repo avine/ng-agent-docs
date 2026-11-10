@@ -137,6 +137,10 @@ describe('entryDescription', () => {
   test('not looked for after the first statement', () => {
     assert.equal(entryDescription('export * from "./a";\n/** Late. @packageDocumentation */'), undefined);
   });
+  test('paragraphs kept', () => {
+    const source = '/**\n * Pipes.\n *\n *\n * Second paragraph,\n * on two lines.\n *\n * @packageDocumentation\n */';
+    assert.equal(entryDescription(source), 'Pipes.\n\nSecond paragraph,\non two lines.');
+  });
   test('none', () => {
     assert.equal(entryDescription('/** Just a comment. */\nexport {};'), undefined);
   });

@@ -6,6 +6,11 @@ import type { FxSize } from './types/size';
  */
 export const fxSize: FxSize = 'm';
 
+/**
+ * Index of the first row. Named like the index of its entry point (`index.md`): its page is `index-2.md`.
+ */
+export const index = 0;
+
 /** Default number of rows per page. */
 export const FX_PAGE_SIZE = 20;
 

@@ -39,8 +39,8 @@ function findNgPackages(
 }
 
 /**
- * Reads the @packageDocumentation block of an entry file, used as the entry point's one-line description
- * in the index:
+ * Reads the @packageDocumentation block of an entry file, the entry point's description: its first sentence
+ * in index.md, the whole text (paragraphs kept) in the entry point's own index:
  *   /** Form fields built on Signal Forms. @packageDocumentation *\/
  * It is looked for in the comments at the top of the file, before any code: it may follow a license header.
  */
@@ -57,8 +57,9 @@ export function entryDescription(source: string): string | undefined {
           .replace(/@packageDocumentation\b/, '')
           .trim(),
       )
-      .filter(Boolean)
-      .join('\n');
+      .join('\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
     return text || undefined;
   }
   return undefined;

@@ -3,7 +3,9 @@
  * Generates agent-docs/ from an Angular library's sources and JSDoc: its public API, split into small
  * files for AI agents. Works with a single entry point and with ng-packagr secondary entry points.
  *
- *   agent-docs/index.md                    → compact catalog, grouped by entry point, one line per symbol
+ *   agent-docs/index.md                    → compact catalog: one line per entry point (one line per symbol
+ *                                            when a single entry point has pages)
+ *   agent-docs/api/<entry>/index.md        → one line per symbol of that entry point
  *   agent-docs/api/<entry>/<Symbol>.md     → details of one symbol (primary entry point: api/<Symbol>.md)
  *   agent-docs/extra-docs/                 → copy of the --extra-docs folder, linked at the end of the index
  *
@@ -37,10 +39,11 @@ import {
 } from './lib/config.mts';
 import { describe } from './lib/describe.mts';
 import { discoverEntryPoints } from './lib/entry-points.mts';
-import { renderIndex } from './lib/markdown.mts';
+import { renderIndexes } from './lib/markdown.mts';
 import {
   type Context,
   type Entry,
+  entryIndexPage,
   type EntryPoint,
   EXTRA_DOCS_DIR,
   type Owners,
@@ -145,11 +148,13 @@ function main(config: Config): number {
   // Page of each symbol, relative to outDir: api/<entry slug>/<Symbol>.md. Names that differ only by case
   // (`FxSize`, `fxSize`) would share one file on a case-insensitive file system (macOS, Windows), where the
   // package may be unpacked: the first in code point order keeps `<Name>.md`, the next ones get `<Name>-2.md`,
-  // `-3`… (no name has a `-`).
+  // `-3`… (no name has a `-`). Each folder's `index.md` is kept for its entry point's index: a symbol named
+  // `index` gets `index-2.md`.
   const docPath = (e: { name: string; ep: EntryPoint }) =>
     ['api', e.ep.slug, `${e.name}.md`].filter(Boolean).join('/');
   const pageOf = new Map<string, string>(); // docPath → page
   const sharing = new Map<string, number>(); // lowercased docPath → number of pages using it so far
+  for (const ep of entryPoints) sharing.set(entryIndexPage(ep.slug).toLowerCase(), 1);
   for (const path of [...new Set(owned.map(docPath))].sort()) {
     const n = (sharing.get(path.toLowerCase()) ?? 0) + 1;
     sharing.set(path.toLowerCase(), n);
@@ -210,15 +215,26 @@ function main(config: Config): number {
   }
 
   // ===========================================================================
-  // Main 4: write the index — one section per entry point, then one sub-section per kind
+  // Main 4: write the index, and the index of each entry point when there are several
   // ===========================================================================
-  const index = renderIndex(entryPoints, entries, {
+  // One entry point with pages: index.md lists its symbols. Several: index.md lists the entry points, one
+  // line each, and each one gets its own index, so the agent reads only the entry points it needs. Their
+  // description is then all it has to choose them: a missing one is reported.
+  const listed = entryPoints.filter((ep) => entries.some((e) => e.ep === ep));
+  if (listed.length > 1) {
+    for (const ep of listed.filter((x) => !x.description))
+      warn(
+        `${ep.importPath}: entry point without a description in index.md: add a @packageDocumentation block at the top of its entry file`,
+        ep.file,
+      );
+  }
+  const indexes = renderIndexes(listed, entries, {
     pkg: config.pkg,
     notes: config.notes,
     extraDocs: !!extraDocs,
     extraDocsNotes: config.extraDocsNotes,
   });
-  writeFileSync(join(outDir, 'index.md'), index + '\n');
+  for (const { page, markdown } of indexes) writeFileSync(join(outDir, page), markdown + '\n');
 
   // ===========================================================================
   // Report

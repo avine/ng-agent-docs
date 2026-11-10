@@ -6,6 +6,7 @@ import {
   type Context,
   type Doc,
   type Entry,
+  entryIndexPage,
   type EntryPoint,
   EXTRA_DOCS_DIR,
   GENERATED_MARKER,
@@ -257,7 +258,9 @@ export const seeItems = (
 ) => seeRefs(name, doc, at, fromPage, owners, quiet).map((r) => item(`**see**: ${r}`, '  '));
 
 // =============================================================================
-// Index — one section per entry point, then one sub-section per kind
+// Index. With one entry point, index.md lists its symbols, one sub-section per kind. With several, index.md
+// lists the entry points, one line each, and each one gets its own index of symbols (api/<slug>/index.md):
+// the agent reads only the entry points its task needs, not the whole API.
 // =============================================================================
 const GROUPS: [Kind[], string][] = [
   [['component'], 'Components'],
@@ -269,9 +272,12 @@ const GROUPS: [Kind[], string][] = [
   [['function', 'const', 'class'], 'Functions, constants and classes'],
 ];
 
+// A page (relative to OUT_DIR), as a link from an index in `dir` ('' for index.md).
+const linkTo = (page: string, dir: string) => (dir ? posix.relative(dir, page) : page);
+
 // Index line: link, selector or pipe name, first sentence of the description, replacement hints.
-const indexLine = (e: Entry) =>
-  `- [${e.name}](${e.page})` +
+const indexLine = (e: Entry, dir: string) =>
+  `- [${e.name}](${linkTo(e.page, dir)})` +
   (e.selector ? ` \`${e.selector}\`` : '') +
   (e.pipeName ? ` \`| ${e.pipeName}\`` : '') +
   (e.doc.description ? ` — ${summary(e.doc.description)}` : '') +
@@ -279,18 +285,35 @@ const indexLine = (e: Entry) =>
   (e.doc.replacedBy ? ` → ⚠️ prefer ${oneLine(e.doc.replacedBy)}` : '') +
   (e.doc.deprecated !== undefined ? ' (deprecated)' : '');
 
-const entryPointSection = (ep: EntryPoint, entries: Entry[]) => {
-  const own = entries.filter((e) => e.ep === ep);
-  if (!own.length) return []; // e.g. an empty primary entry point
-  return [
+// The symbols of one entry point, one sub-section per kind, under headings of the given level.
+const kindSections = (own: Entry[], level: string, dir: string) =>
+  GROUPS.flatMap(([kinds, title]) => {
+    const list = own.filter((e) => kinds.includes(e.kind));
+    return list.length ? ['', `${level} ${title}`, ...list.map((e) => indexLine(e, dir))] : [];
+  });
+
+// One entry point and its symbols, in index.md (a single entry point has pages).
+const entryPointSection = (ep: EntryPoint, own: Entry[]) => [
+  '',
+  `## \`${ep.importPath}\`${ep.description ? ` — ${summary(ep.description)}` : ''}`,
+  ...kindSections(own, '###', ''),
+];
+
+// One entry point on one line, in index.md (several entry points have pages): link to its own index,
+// first sentence of its description.
+const entryPointLine = (ep: EntryPoint) =>
+  `- [\`${ep.importPath}\`](${entryIndexPage(ep.slug)})` +
+  (ep.description ? ` — ${summary(ep.description)}` : '');
+
+// The index of one entry point's symbols, api/<slug>/index.md: its whole description, then its symbols.
+const entryPointIndex = (ep: EntryPoint, own: Entry[]) =>
+  [
+    `# \`${ep.importPath}\``,
+    ...(ep.description ? ['', ep.description] : []),
     '',
-    `## \`${ep.importPath}\`${ep.description ? ` — ${summary(ep.description)}` : ''}`,
-    ...GROUPS.flatMap(([kinds, title]) => {
-      const list = own.filter((e) => kinds.includes(e.kind));
-      return list.length ? ['', `### ${title}`, ...list.map(indexLine)] : [];
-    }),
-  ];
-};
+    `Import each symbol from \`${ep.importPath}\`. Read only the relevant \`<Symbol>.md\` file.`,
+    ...kindSections(own, '##', posix.dirname(entryIndexPage(ep.slug))),
+  ].join('\n');
 
 /** What index.md needs from the command line. */
 export interface IndexOptions {
@@ -312,16 +335,45 @@ const extraDocsSection = (opts: IndexOptions) =>
       ]
     : [];
 
-/** Content of index.md. The intro lines are instructions for the agent reading it: add yours with --note. */
-export const renderIndex = (entryPoints: EntryPoint[], entries: Entry[], opts: IndexOptions) =>
-  [
+/**
+ * The index files, relative to OUT_DIR: index.md, and with several entry points, the index of each one.
+ * `listed` are the entry points that have pages (an empty primary entry point has none). The intro lines
+ * of index.md are instructions for the agent reading it: add yours with --note.
+ */
+export function renderIndexes(
+  listed: EntryPoint[],
+  entries: Entry[],
+  opts: IndexOptions,
+): { page: string; markdown: string }[] {
+  const byEp = listed.map((ep) => ({ ep, own: entries.filter((e) => e.ep === ep) }));
+  const split = listed.length > 1;
+  const index = [
     `# ${opts.pkg.name}${opts.pkg.version ? ` ${opts.pkg.version}` : ''} — Public API`,
     '',
     GENERATED_MARKER,
     '',
     ...opts.notes,
-    'Read this index, then only the relevant `api/.../<Symbol>.md` file.',
-    'Import each symbol from the entry point given in its section heading.',
-    ...entryPoints.flatMap((ep) => entryPointSection(ep, entries)),
+    ...(split
+      ? [
+          'Read this index, then the index of each entry point your task needs, then only the relevant `<Symbol>.md` files.',
+          '',
+          '## Entry points',
+          ...listed.map(entryPointLine),
+        ]
+      : [
+          'Read this index, then only the relevant `api/.../<Symbol>.md` file.',
+          'Import each symbol from the entry point given in its section heading.',
+          ...byEp.flatMap(({ ep, own }) => entryPointSection(ep, own)),
+        ]),
     ...extraDocsSection(opts),
   ].join('\n');
+  return [
+    { page: 'index.md', markdown: index },
+    ...(split
+      ? byEp.map(({ ep, own }) => ({
+          page: entryIndexPage(ep.slug),
+          markdown: entryPointIndex(ep, own),
+        }))
+      : []),
+  ];
+}
