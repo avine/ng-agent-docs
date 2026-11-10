@@ -158,7 +158,7 @@ export const examples = (doc: Doc) =>
 // `{@link Target}`, `{@link Target | label}` or `{@link Target label}`; also {@linkcode …} and {@linkplain …}.
 const LINK = /\{@link(code|plain)?\s+([^\s|}]+)\s*\|?\s*([^}]*)\}/g;
 // A symbol name that starts a @see tag, without {@link}: `@see FxDialogRef.close, to close it`.
-const LEADING_NAME = /^[A-Za-z_$][\w$]*(?:[.#][\w$]+)*(?=[\s,.;]|$)/;
+const LEADING_NAME = /^[A-Za-z_$][\w$]*(?:[.#][\w$]+)*(?:\(\))?(?=[\s,.;]|$)/;
 
 /**
  * The @see tags of a JSDoc block, one text each. A reference TypeScript resolves is linked to the page that
@@ -166,6 +166,7 @@ const LEADING_NAME = /^[A-Za-z_$][\w$]*(?:[.#][\w$]+)*(?=[\s,.;]|$)/;
  * other text is kept as written:
  *   [FxDialogService](FxDialogService.md)
  *   [Opening a dialog](FxDialogService.md), then [FxDialogRef#close](FxDialogRef.md)
+ *   [FxDialogRef.close()](FxDialogRef.md)
  *   NgStyle (`@angular/common`)
  * Warns about a {@link} that cannot be resolved, and about a reference to a library symbol without a page,
  * unless `quiet`: an inherited member is reported on the page of the class that declares it.
@@ -191,7 +192,8 @@ function seeRefs(
     const text = asCode ? code(label) : label;
     if (/^https?:\/\//.test(target))
       return label === target ? `<${target}>` : `[${text}](${target})`;
-    const decls = doc.seeTargets?.get(target);
+    // `FxDialogRef.close()`: TypeScript resolves `FxDialogRef.close`, the `()` is text. The label keeps it.
+    const decls = doc.seeTargets?.get(target.replace(/\(\)$/, ''));
     if (!decls) {
       if (explicit)
         report(`${name}: @see ${target} not found: import it in this file, or fix its name`);

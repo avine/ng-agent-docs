@@ -27,8 +27,8 @@ agent-docs: 68 symbols from 9 entry point(s) → <scratch>/button
   - forms/date/date-range.ts:4: FxDateRange: templateUrl `./missing-template.html` not found, its content projection slots are not documented
   - overlay/dialog.service.ts:44: FxDialogService.closeAll: undocumented method
   - overlay/dialog.service.ts:29: FxDialogService.maxStack: undocumented static property
-  - overlay/confirm-dialog.ts:24: FxConfirmDialog: @see refers to internalHelper, which has no page: export it from an entry point
-  - overlay/confirm-dialog.ts:24: FxConfirmDialog: @see FxMissingDialog not found: import it in this file, or fix its name
+  - overlay/confirm-dialog.ts:26: FxConfirmDialog: @see refers to internalHelper, which has no page: export it from an entry point
+  - overlay/confirm-dialog.ts:26: FxConfirmDialog: @see FxMissingDialog not found: import it in this file, or fix its name
   - overlay/toast.service.ts:12: FxToastService.position: undocumented property
   - overlay/highlight-card.ts:24: FxHighlightCard: bindings declared by the mixin `withHighlight(CardBase)` are not documented
   - overlay/highlight-card.ts:19: FxHighlightCard.outlined: undocumented input (declared by CardBase)

@@ -12,6 +12,8 @@ import { FxDialogService } from './dialog.service';
  * wherever it is declared (imported in this file: TypeScript resolves each name as for "Go to definition").
  * A tag can follow text on its line. @see FxDialogService
  * @see {@link FxDialogService.open | Opening a dialog}, then {@linkcode FxDialogRef#close} (JSDoc member syntax)
+ * @see {@link FxDialogRef.close()}, with parentheses: linked, as TypeScript resolves it
+ * @see FxDialogRef.close(), the same without {@link}
  * @see {@link FxSize} for the sizes, from another entry point
  * @see {@link formatAmount}, an overloaded function: linked to its page, which is on its implementation
  * @see {@link NgStyle} from another package: not linked

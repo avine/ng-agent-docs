@@ -13,6 +13,8 @@ A tag can follow text on its line.
 ## See also
 - [FxDialogService](FxDialogService.md)
 - [Opening a dialog](FxDialogService.md), then [`FxDialogRef#close`](FxDialogRef.md) (JSDoc member syntax)
+- [FxDialogRef.close()](FxDialogRef.md), with parentheses: linked, as TypeScript resolves it
+- [FxDialogRef.close()](FxDialogRef.md), the same without {@link}
 - [FxSize](FxSize.md) for the sizes, from another entry point
 - [formatAmount](formatAmount.md), an overloaded function: linked to its page, which is on its implementation
 - NgStyle (`@angular/common`) from another package: not linked

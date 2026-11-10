@@ -108,7 +108,7 @@ Everything comes from the library's sources:
 | `@see`               | Related symbol or page, listed under "See also"; on a member (method, property, constructor, input, output, model), under that member. One tag per reference. |
 
 `@see FxTooltip` and `@see {@link FxTooltip}` link to the page of `FxTooltip`, from any entry point; a
-member (`{@link FxDialogRef.close}`, or `FxDialogRef#close`) links to its class's page. A reference to the
+member (`{@link FxDialogRef.close}`, `FxDialogRef.close()` or `FxDialogRef#close`) links to its class's page. A reference to the
 page it is on is not linked. TypeScript resolves
 the name as for "Go to definition": it must be declared or imported in the file. `{@link FxTooltip | the
 tooltip}` sets the link text, and a URL becomes a link. Other text is kept as written: `@see the theming
