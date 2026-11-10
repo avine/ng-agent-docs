@@ -93,10 +93,12 @@ const REFERENCES = new Set([
  * Declarations the @see tags of a JSDoc block refer to, by reference as written. TypeScript finds them as
  * for "Go to definition": the name must be declared or imported in the file. `FxDialogRef.close` gives the
  * method; `FxDialogRef#close` (JSDoc member syntax, which TypeScript does not resolve) gives the class.
+ * All the declarations of a symbol are kept: the one with a page is not always the first (an overloaded
+ * function's page is on its implementation, after its overloads).
  * The text of the tags still comes from parseJsDoc: only the references are read from TypeScript's tags.
  */
-function seeTargets(jsDoc: JSDoc): Map<string, Node> {
-  const targets = new Map<string, Node>();
+function seeTargets(jsDoc: JSDoc): Map<string, Node[]> {
+  const targets = new Map<string, Node[]>();
   for (const tag of jsDoc.getTags().filter(Node.isJSDocSeeTag)) {
     tag.forEachDescendant((ref) => {
       if (!REFERENCES.has(ref.getKind())) return;
@@ -104,8 +106,8 @@ function seeTargets(jsDoc: JSDoc): Map<string, Node> {
       let target = name;
       while (Node.isJSDocMemberName(target)) target = target.forEachChild((c) => c); // `A#b` → `A`
       const symbol = target?.getSymbol();
-      const decl = (symbol?.isAlias() ? symbol.getAliasedSymbol() : symbol)?.getDeclarations()[0];
-      if (name && decl) targets.set(name.getText(), decl);
+      const decls = (symbol?.isAlias() ? symbol.getAliasedSymbol() : symbol)?.getDeclarations();
+      if (name && decls?.length) targets.set(name.getText(), decls);
     });
   }
   return targets;

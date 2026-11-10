@@ -191,15 +191,20 @@ function seeRefs(
     const text = asCode ? code(label) : label;
     if (/^https?:\/\//.test(target))
       return label === target ? `<${target}>` : `[${text}](${target})`;
-    const decl = doc.seeTargets?.get(target);
-    if (!decl) {
+    const decls = doc.seeTargets?.get(target);
+    if (!decls) {
       if (explicit)
         report(`${name}: @see ${target} not found: import it in this file, or fix its name`);
       return explicit ? text : undefined;
     }
-    let owner: Node | undefined = decl;
-    while (owner && !Node.isSourceFile(owner) && !owners.has(owner)) owner = owner.getParent();
-    const page = owner && owners.get(owner)?.ctx.page;
+    const pageOf = (decl: Node) => {
+      let owner: Node | undefined = decl;
+      while (owner && !Node.isSourceFile(owner) && !owners.has(owner)) owner = owner.getParent();
+      return owner && owners.get(owner)?.ctx.page;
+    };
+    // The first declaration with a page: an overloaded function's page is on its implementation.
+    const page = decls.map(pageOf).find(Boolean);
+    const decl = decls[0]!; // never empty (seeTargets)
     // A reference to the page being written is not linked: it would lead back to the same file.
     if (page)
       return page === fromPage

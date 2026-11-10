@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { NgStyle } from '@angular/common';
-import { FxSize } from '@fixtures/multi-entry/core';
+import { formatAmount, FxSize } from '@fixtures/multi-entry/core';
 import { internalHelper } from '../core/internal';
 import { FxDialogRef } from './dialog-ref';
 import { FxDialogService } from './dialog.service';
@@ -13,6 +13,7 @@ import { FxDialogService } from './dialog.service';
  * A tag can follow text on its line. @see FxDialogService
  * @see {@link FxDialogService.open | Opening a dialog}, then {@linkcode FxDialogRef#close} (JSDoc member syntax)
  * @see {@link FxSize} for the sizes, from another entry point
+ * @see {@link formatAmount}, an overloaded function: linked to its page, which is on its implementation
  * @see {@link NgStyle} from another package: not linked
  * @see {@link internalHelper}, exported by no entry point: warning
  * @see {@link FxMissingDialog} not imported, or misspelled: warning

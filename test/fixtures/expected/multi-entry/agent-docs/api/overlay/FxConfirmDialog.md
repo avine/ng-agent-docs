@@ -14,6 +14,7 @@ A tag can follow text on its line.
 - [FxDialogService](FxDialogService.md)
 - [Opening a dialog](FxDialogService.md), then [`FxDialogRef#close`](FxDialogRef.md) (JSDoc member syntax)
 - [FxSize](../core/FxSize.md) for the sizes, from another entry point
+- [formatAmount](../core/formatAmount.md), an overloaded function: linked to its page, which is on its implementation
 - NgStyle (`@angular/common`) from another package: not linked
 - internalHelper (not exported by the library), exported by no entry point: warning
 - FxMissingDialog not imported, or misspelled: warning
