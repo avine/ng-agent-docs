@@ -7,11 +7,22 @@ import { toLf } from './util.mts';
 // =============================================================================
 // Tags that can follow text on the same line, as in a one-line JSDoc: `/** Old. @deprecated Use FxNew. */`.
 // Not @default: in an @example without a code fence, it is Angular control flow (`@case (1) {…} @default {…}`).
-const INLINE_TAGS = ['usage', 'avoid', 'replacedBy', 'replaces', 'example', 'deprecated', 'param', 'returns', 'see'];
+const INLINE_TAGS = [
+  'usage',
+  'avoid',
+  'replacedBy',
+  'replaces',
+  'example',
+  'deprecated',
+  'param',
+  'returns',
+  'see',
+];
 const INLINE_TAG = new RegExp(`\\s+(?=@(?:${INLINE_TAGS.join('|')})\\b)`, 'g');
 
 // Angular control flow at the start of a line, in an @example without a code fence: content, not a tag.
-const CONTROL_FLOW = /^@(?:(?:if|for|switch|case|default|defer|placeholder|loading|error|empty)\s*[({]|else\b|let\s)/;
+const CONTROL_FLOW =
+  /^@(?:(?:if|for|switch|case|default|defer|placeholder|loading|error|empty)\s*[({]|else\b|let\s)/;
 
 // `Old. @deprecated Use FxNew.` → ['Old.', '@deprecated Use FxNew.']. Not at the start of the line
 // (an indented tag is content), nor in inline code.
@@ -50,7 +61,10 @@ export function parseJsDoc(text: string) {
       if (line.trimStart().startsWith('```')) inFence = !inFence;
     }
   }
-  return { description: description.join('\n').trim(), tags: tags.map((t) => ({ ...t, text: t.text.trim() })) };
+  return {
+    description: description.join('\n').trim(),
+    tags: tags.map((t) => ({ ...t, text: t.text.trim() })),
+  };
 }
 
 /**
@@ -60,12 +74,20 @@ export function parseJsDoc(text: string) {
 export function parseParam(text: string): { name: string; text: string } | undefined {
   const m = /^(?:\{[^}]*\}\s*)?(\[[^\]]*\]|[\w$.]+)\s*(?:-\s+)?([\s\S]*)$/.exec(text);
   if (!m?.[1]) return undefined;
-  const name = m[1].replace(/^\[|\]$/g, '').replace(/=.*$/s, '').trim();
+  const name = m[1]
+    .replace(/^\[|\]$/g, '')
+    .replace(/=.*$/s, '')
+    .trim();
   return name ? { name, text: (m[2] ?? '').trim() } : undefined;
 }
 
 // Nodes that name a symbol in a @see tag: `@see FxTooltip`, `{@link FxTooltip}`, `{@linkcode …}`, `{@linkplain …}`.
-const REFERENCES = new Set([SyntaxKind.JSDocNameReference, SyntaxKind.JSDocLink, SyntaxKind.JSDocLinkCode, SyntaxKind.JSDocLinkPlain]);
+const REFERENCES = new Set([
+  SyntaxKind.JSDocNameReference,
+  SyntaxKind.JSDocLink,
+  SyntaxKind.JSDocLinkCode,
+  SyntaxKind.JSDocLinkPlain,
+]);
 
 /**
  * Declarations the @see tags of a JSDoc block refer to, by reference as written. TypeScript finds them as
@@ -107,22 +129,40 @@ export function readDoc(node: Node): Doc {
   doc.description = description || undefined;
   for (const { name, text } of tags) {
     switch (name) {
-      case 'usage': doc.usage.push(text); break;
-      case 'avoid': doc.avoid.push(text); break;
-      case 'replacedBy': doc.replacedBy = text; break;
-      case 'replaces': doc.replaces.push(text); break;
-      case 'deprecated': doc.deprecated = text; break;
-      case 'example': doc.examples.push(text); break;
+      case 'usage':
+        doc.usage.push(text);
+        break;
+      case 'avoid':
+        doc.avoid.push(text);
+        break;
+      case 'replacedBy':
+        doc.replacedBy = text;
+        break;
+      case 'replaces':
+        doc.replaces.push(text);
+        break;
+      case 'deprecated':
+        doc.deprecated = text;
+        break;
+      case 'example':
+        doc.examples.push(text);
+        break;
       case 'param': {
         const param = parseParam(text);
         if (param) doc.params.push(param);
         break;
       }
       case 'returns':
-      case 'return': doc.returns = text || undefined; break;
+      case 'return':
+        doc.returns = text || undefined;
+        break;
       case 'default':
-      case 'defaultValue': doc.defaultValue = text || undefined; break;
-      case 'see': if (text) doc.see.push(text); break;
+      case 'defaultValue':
+        doc.defaultValue = text || undefined;
+        break;
+      case 'see':
+        if (text) doc.see.push(text);
+        break;
     }
   }
   if (doc.see.length) doc.seeTargets = seeTargets(jsDoc);

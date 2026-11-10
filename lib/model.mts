@@ -133,5 +133,10 @@ export const warnings: Warning[] = [];
 /** Records a warning, located at a node (its file and line) or at a file. */
 export function warn(message: string, at?: Node | string): void {
   if (typeof at === 'string') warnings.push({ message, file: at });
-  else warnings.push({ message, file: at?.getSourceFile().getFilePath(), line: at?.getStartLineNumber() });
+  else
+    warnings.push({
+      message,
+      file: at?.getSourceFile().getFilePath(),
+      line: at?.getStartLineNumber(),
+    });
 }

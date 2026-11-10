@@ -70,8 +70,8 @@ in it: the generator must not find it, even with `--out` and the library not bui
 
 - These sources are compiled by nothing: they are excluded from `tsconfig.json`, keep them out of any
   linter configuration. `missing-template.html` is missing on purpose, so the folder would not build.
-- `.gitattributes` forces LF line endings, so the snapshot compares equal on Windows. CRLF sources are
-  covered by `crlf-sources`, which converts a copy of `single-entry/` and checks that the generated files
-  are the same, byte for byte.
+- The root `.gitattributes` forces LF line endings, so the snapshot compares equal on Windows. CRLF
+  sources are covered by `crlf-sources`, which converts a copy of `single-entry/` and checks that the
+  generated files are the same, byte for byte.
 - `dist/`, `node_modules/` and `.cache/` decoys are created by the test runner during the run, not
   committed: git usually ignores those folders.

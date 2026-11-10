@@ -23,16 +23,29 @@ export function readJson<T>(file: string): T {
   }
 }
 
+/**
+ * The validated command line, built by readConfig(): every path is absolute, every default applied.
+ * Checks that depend on the folders' content (checkOutDir, checkExtraDocs) are run separately by main().
+ */
 export interface Config {
+  /** --root: the library folder, with its package.json. Warnings print paths relative to it. */
   libRoot: string;
-  tsconfig: string; // needed so types resolve
+  /** --tsconfig, default <libRoot>/tsconfig.lib.json: the compiler options the sources are read with. */
+  tsconfig: string;
+  /** --note: lines added at the top of the index. */
   notes: string[];
-  extraDocs?: string | undefined; // copied to outDir/extra-docs
+  /** --extra-docs: a folder with an index.md, copied to <outDir>/extra-docs/. */
+  extraDocs?: string | undefined;
+  /** --extra-docs-note: lines shown above the link to the extra docs. */
   extraDocsNotes: string[];
+  /** --strict: exit code 1 when there are warnings. */
   strict: boolean;
+  /** From the library's package.json. `name` is the import path of the primary entry point, and the prefix of the others. */
   pkg: { name: string; version?: string | undefined };
-  destDir?: string | undefined; // read even with --out: never scanned for entry points
-  outDir: string; // ⚠️ wiped on every run
+  /** `dest` of the library's ng-packagr configuration. Read even with --out: never scanned for entry points. */
+  destDir?: string | undefined;
+  /** --out, default <destDir>/agent-docs. ⚠️ Wiped on every run: see checkOutDir(). */
+  outDir: string;
 }
 
 const HELP = `Usage: ng-agent-docs --root <library folder> [options]
@@ -56,7 +69,10 @@ Options, JSDoc tags and examples: README.md of the ng-agent-docs package.`;
 
 /** Version of ng-agent-docs, from its package.json: one folder up from lib/ in the sources, from dist/ once bundled. */
 function ownVersion(): string {
-  return readJson<{ version?: string }>(join(import.meta.dirname, '..', 'package.json')).version ?? 'unknown';
+  return (
+    readJson<{ version?: string }>(join(import.meta.dirname, '..', 'package.json')).version ??
+    'unknown'
+  );
 }
 
 /**
@@ -89,7 +105,8 @@ export function readConfig(argv: string[]): Config | { print: string } {
   if (!args.root) fail('Missing --root <library folder>, e.g. --root projects/my-lib (see --help)');
   const libRoot = resolve(args.root);
   const extraDocs = args['extra-docs'] ? resolve(args['extra-docs']) : undefined;
-  if (args['extra-docs-note'].length && !extraDocs) fail('--extra-docs-note needs --extra-docs <folder>.');
+  if (args['extra-docs-note'].length && !extraDocs)
+    fail('--extra-docs-note needs --extra-docs <folder>.');
   const pkg = readPackage(libRoot);
   const destDir = ngPackageDest(libRoot);
   return {
@@ -101,7 +118,9 @@ export function readConfig(argv: string[]): Config | { print: string } {
     strict: args.strict,
     pkg,
     destDir,
-    outDir: args.out ? resolve(args.out) : join(builtPackageDir(libRoot, pkg.name, destDir), 'agent-docs'),
+    outDir: args.out
+      ? resolve(args.out)
+      : join(builtPackageDir(libRoot, pkg.name, destDir), 'agent-docs'),
   };
 }
 
@@ -110,7 +129,8 @@ function readPackage(libRoot: string): Config['pkg'] {
   const file = join(libRoot, 'package.json');
   if (!existsSync(file)) fail(`No package.json in ${libRoot}: --root must be the library folder.`);
   const { name, version } = readJson<{ name?: unknown; version?: unknown }>(file);
-  if (typeof name !== 'string' || !name) fail(`${file}: no "name", the import path of the library.`);
+  if (typeof name !== 'string' || !name)
+    fail(`${file}: no "name", the import path of the library.`);
   return { name, version: typeof version === 'string' ? version : undefined };
 }
 
@@ -143,7 +163,9 @@ export function readNgPackage(dir: string): { file: string; config: NgPackage } 
     return undefined; // a package.json of something else (a test fixture, a tool): not ours to judge
   }
   const config = pkg.ngPackage;
-  return config && typeof config === 'object' ? { file: pkgFile, config: config as NgPackage } : undefined;
+  return config && typeof config === 'object'
+    ? { file: pkgFile, config: config as NgPackage }
+    : undefined;
 }
 
 /**
@@ -163,13 +185,20 @@ function ngPackageDest(libRoot: string): string | undefined {
  * Fails if there is no ng-package.json, if the package has not been built, or if `dest` holds another package.
  */
 function builtPackageDir(libRoot: string, pkgName: string, destDir: string | undefined): string {
-  const dest = destDir ?? fail(`No ng-package.json (nor "ngPackage" in package.json) in ${libRoot}: pass --out <dir>.`);
+  const dest =
+    destDir ??
+    fail(`No ng-package.json (nor "ngPackage" in package.json) in ${libRoot}: pass --out <dir>.`);
   const builtPkg = join(dest, 'package.json');
   if (!existsSync(builtPkg)) {
-    fail(`${builtPkg} not found: build the library first (ng build), agent-docs/ goes into the built package.`);
+    fail(
+      `${builtPkg} not found: build the library first (ng build), agent-docs/ goes into the built package.`,
+    );
   }
   const { name } = readJson<{ name?: string }>(builtPkg);
-  if (name !== pkgName) fail(`${builtPkg} is the package ${name}, not ${pkgName}: check "dest" in ${readNgPackage(libRoot)?.file}.`);
+  if (name !== pkgName)
+    fail(
+      `${builtPkg} is the package ${name}, not ${pkgName}: check "dest" in ${readNgPackage(libRoot)?.file}.`,
+    );
   return dest;
 }
 
@@ -187,7 +216,9 @@ export function checkOutDir({ libRoot, outDir }: Config): void {
   // The marker on its own line, where every index.md has it: a page that merely quotes it does not count.
   const generatedBefore = () => {
     const index = join(outDir, 'index.md');
-    return existsSync(index) && readFileSync(index, 'utf8').split(/\r?\n/).includes(GENERATED_MARKER);
+    return (
+      existsSync(index) && readFileSync(index, 'utf8').split(/\r?\n/).includes(GENERATED_MARKER)
+    );
   };
   // What a previous run did not write, relative to outDir. A folder is listed, not its content.
   const notGenerated = (dir = outDir): string[] =>
@@ -197,13 +228,17 @@ export function checkOutDir({ libRoot, outDir }: Config): void {
       if (OS_FILES.has(d.name)) return [];
       if (d.isDirectory() && path === EXTRA_DOCS_DIR) return [];
       if (d.isDirectory() && underApi) return notGenerated(join(dir, d.name));
-      return d.isFile() && (path === 'index.md' || (underApi && path.endsWith('.md'))) ? [] : [path];
+      return d.isFile() && (path === 'index.md' || (underApi && path.endsWith('.md')))
+        ? []
+        : [path];
     });
   const contentReason = () => {
     if (readdirSync(outDir).every((name) => OS_FILES.has(name))) return undefined; // empty
-    if (!generatedBefore()) return 'it is not empty and was not generated by this script (no index.md with the generated marker)';
+    if (!generatedBefore())
+      return 'it is not empty and was not generated by this script (no index.md with the generated marker)';
     const others = notGenerated().sort(); // readdirSync order depends on the file system (NTFS: case-insensitive)
-    const shown = others.slice(0, 5).join(', ') + (others.length > 5 ? `, and ${others.length - 5} more` : '');
+    const shown =
+      others.slice(0, 5).join(', ') + (others.length > 5 ? `, and ${others.length - 5} more` : '');
     return others.length ? `it holds files not generated by this script (${shown})` : undefined;
   };
   const reason = isInside(libRoot, outDir)
@@ -225,7 +260,14 @@ export function checkExtraDocs({ extraDocs: dir, outDir }: Config): void {
   if (!dir) return;
   if (!existsSync(dir) || !statSync(dir).isDirectory()) fail(`--extra-docs ${dir}: not a folder.`);
   const index = join(dir, 'index.md');
-  if (!existsSync(index) || !statSync(index).isFile()) fail(`--extra-docs ${dir}: no index.md in it, the main index links to it.`);
-  if (isInside(dir, outDir)) fail(`Refusing to use --extra-docs ${dir}: it is inside the output folder ${outDir}, which is deleted on every run.`);
-  if (isInside(outDir, dir)) fail(`Refusing to use --extra-docs ${dir}: it contains the output folder ${outDir}, it would be copied into itself.`);
+  if (!existsSync(index) || !statSync(index).isFile())
+    fail(`--extra-docs ${dir}: no index.md in it, the main index links to it.`);
+  if (isInside(dir, outDir))
+    fail(
+      `Refusing to use --extra-docs ${dir}: it is inside the output folder ${outDir}, which is deleted on every run.`,
+    );
+  if (isInside(outDir, dir))
+    fail(
+      `Refusing to use --extra-docs ${dir}: it contains the output folder ${outDir}, it would be copied into itself.`,
+    );
 }

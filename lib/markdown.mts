@@ -21,17 +21,34 @@ import { code, codeBlock, oneLine, packageOf, summary } from './util.mts';
 // Each page is assembled in describe.mts, which holds its kind-specific sections.
 // =============================================================================
 // A JSDoc tag can span several lines: each one is quoted, or indented to stay in its list item.
-const quote = (s: string) => s.split('\n').map((l) => `> ${l}`.trimEnd()).join('\n');
+const quote = (s: string) =>
+  s
+    .split('\n')
+    .map((l) => `> ${l}`.trimEnd())
+    .join('\n');
 const item = (s: string, indent = '') =>
-  `${indent}- ` + s.split('\n').map((l, i) => (i && l.trim() ? `${indent}  ${l}` : l)).join('\n');
+  `${indent}- ` +
+  s
+    .split('\n')
+    .map((l, i) => (i && l.trim() ? `${indent}  ${l}` : l))
+    .join('\n');
 
 /** Top of every symbol page: title, import line(s), warnings, description, @usage and @avoid. */
-export function header(name: string, kind: Kind, doc: Doc, ctx: Context, extra: string[] = []): string[] {
+export function header(
+  name: string,
+  kind: Kind,
+  doc: Doc,
+  ctx: Context,
+  extra: string[] = [],
+): string[] {
   const lines = [`# ${name} (${kind})`, '', `\`import { ${name} } from '${ctx.ep.importPath}';\``];
-  const alsoFrom = ctx.alsoFrom.map((x) => `\`${x.importPath}\`` + (x.name === name ? '' : ` as \`${x.name}\``));
+  const alsoFrom = ctx.alsoFrom.map(
+    (x) => `\`${x.importPath}\`` + (x.name === name ? '' : ` as \`${x.name}\``),
+  );
   if (alsoFrom.length) lines.push('', `Also exported from: ${alsoFrom.join(', ')}`);
   lines.push(...extra.flatMap((x) => ['', x]));
-  if (doc.deprecated !== undefined) lines.push('', quote(`⚠️ Deprecated${doc.deprecated ? `: ${doc.deprecated}` : '.'}`));
+  if (doc.deprecated !== undefined)
+    lines.push('', quote(`⚠️ Deprecated${doc.deprecated ? `: ${doc.deprecated}` : '.'}`));
   if (doc.replacedBy) lines.push('', quote(`⚠️ For new code, use instead: ${doc.replacedBy}`));
   if (doc.replaces.length) lines.push('', `Replaces: ${doc.replaces.map(oneLine).join(', ')}`);
   if (doc.description) lines.push('', doc.description);
@@ -42,7 +59,13 @@ export function header(name: string, kind: Kind, doc: Doc, ctx: Context, extra: 
 
 /** Parameters and return value of a function or pipe page, from @param and @returns. */
 export const paramSection = (doc: Doc) => [
-  ...(doc.params.length ? ['', '## Parameters', ...doc.params.map((p) => item(`\`${p.name}\`${p.text ? ` — ${p.text}` : ''}`))] : []),
+  ...(doc.params.length
+    ? [
+        '',
+        '## Parameters',
+        ...doc.params.map((p) => item(`\`${p.name}\`${p.text ? ` — ${p.text}` : ''}`)),
+      ]
+    : []),
   ...(doc.returns ? ['', '## Returns', doc.returns] : []),
 ];
 
@@ -84,7 +107,9 @@ export function memberList(
       (m.accepts ? ` · accepts: ${code(m.accepts)}` : '') +
       (m.inheritedFrom ? ` · inherited from ${m.inheritedFrom.getName()}` : '') +
       (m.fromHostDirective ? ` · from host directive ${m.fromHostDirective.getName()}` : '') +
-      (m.deprecated !== undefined ? ` ⚠️ deprecated${m.deprecated ? `: ${oneLine(m.deprecated)}` : ''}` : '') +
+      (m.deprecated !== undefined
+        ? ` ⚠️ deprecated${m.deprecated ? `: ${oneLine(m.deprecated)}` : ''}`
+        : '') +
       (m.description ? ` — ${oneLine(m.description)}` : ''),
     ...subItems(m),
   ]);
@@ -95,7 +120,11 @@ export function memberList(
  * A class another page refers to, linked to its page when the library documents it:
  *   [FxTooltip](../overlay/FxTooltip.md) · NgStyle (`@angular/common`) · FxRipple (not exported by the library)
  */
-export function classLink(c: { name: string; decl?: Node | undefined; pkg?: string | undefined }, fromPage: string, owners: Owners): string {
+export function classLink(
+  c: { name: string; decl?: Node | undefined; pkg?: string | undefined },
+  fromPage: string,
+  owners: Owners,
+): string {
   const target = c.decl && owners.get(c.decl)?.ctx.page;
   return c.pkg
     ? `${c.name} (\`${c.pkg}\`)`
@@ -119,7 +148,11 @@ export function hostDirectiveLine(d: HostDirective, fromPage: string, owners: Ow
 // An @example without a code fence is assumed to be an HTML template snippet.
 export const examples = (doc: Doc) =>
   doc.examples.length
-    ? ['', '## Examples', ...doc.examples.map((x) => (x.includes('```') ? x : codeBlock('html', x)))]
+    ? [
+        '',
+        '## Examples',
+        ...doc.examples.map((x) => (x.includes('```') ? x : codeBlock('html', x))),
+      ]
     : [];
 
 // `{@link Target}`, `{@link Target | label}` or `{@link Target label}`; also {@linkcode …} and {@linkplain …}.
@@ -138,24 +171,42 @@ const LEADING_NAME = /^[A-Za-z_$][\w$]*(?:[.#][\w$]+)*(?=[\s,.;]|$)/;
  * unless `quiet`: an inherited member is reported on the page of the class that declares it.
  * A bare name that cannot be resolved is taken as text: `@see the theming guide`.
  */
-function seeRefs(name: string, doc: Doc, at: Node, fromPage: string, owners: Owners, quiet = false): string[] {
+function seeRefs(
+  name: string,
+  doc: Doc,
+  at: Node,
+  fromPage: string,
+  owners: Owners,
+  quiet = false,
+): string[] {
   const report = (message: string) => {
     if (!quiet) warn(message, at);
   };
-  const ref = (target: string, label: string, explicit: boolean, asCode = false): string | undefined => {
+  const ref = (
+    target: string,
+    label: string,
+    explicit: boolean,
+    asCode = false,
+  ): string | undefined => {
     const text = asCode ? code(label) : label;
-    if (/^https?:\/\//.test(target)) return label === target ? `<${target}>` : `[${text}](${target})`;
+    if (/^https?:\/\//.test(target))
+      return label === target ? `<${target}>` : `[${text}](${target})`;
     const decl = doc.seeTargets?.get(target);
     if (!decl) {
-      if (explicit) report(`${name}: @see ${target} not found: import it in this file, or fix its name`);
+      if (explicit)
+        report(`${name}: @see ${target} not found: import it in this file, or fix its name`);
       return explicit ? text : undefined;
     }
     let owner: Node | undefined = decl;
     while (owner && !Node.isSourceFile(owner) && !owners.has(owner)) owner = owner.getParent();
     const page = owner && owners.get(owner)?.ctx.page;
     // A reference to the page being written is not linked: it would lead back to the same file.
-    if (page) return page === fromPage ? text : `[${text}](${posix.relative(posix.dirname(fromPage), page)})`;
-    if (decl.getSourceFile().isInNodeModules()) return `${text} (\`${packageOf(decl.getSourceFile().getFilePath())}\`)`;
+    if (page)
+      return page === fromPage
+        ? text
+        : `[${text}](${posix.relative(posix.dirname(fromPage), page)})`;
+    if (decl.getSourceFile().isInNodeModules())
+      return `${text} (\`${packageOf(decl.getSourceFile().getFilePath())}\`)`;
     report(`${name}: @see refers to ${target}, which has no page: export it from an entry point`);
     return `${text} (not exported by the library)`;
   };
@@ -163,15 +214,23 @@ function seeRefs(name: string, doc: Doc, at: Node, fromPage: string, owners: Own
     const lead = LEADING_NAME.exec(t)?.[0];
     const head = lead === undefined ? undefined : ref(lead, lead, false);
     const rest = head === undefined ? t : t.slice(lead!.length);
-    const linked = rest.replace(LINK, (_, kind: string | undefined, target: string, label: string) =>
-      ref(target, label.trim() || target, true, kind === 'code')!,
+    const linked = rest.replace(
+      LINK,
+      (_, kind: string | undefined, target: string, label: string) =>
+        ref(target, label.trim() || target, true, kind === 'code')!,
     );
     return (head ?? '') + linked;
   });
 }
 
 /** "See also" section of a page, from its @see tags (see seeRefs). */
-export function seeAlso(name: string, doc: Doc, at: Node, fromPage: string, owners: Owners): string[] {
+export function seeAlso(
+  name: string,
+  doc: Doc,
+  at: Node,
+  fromPage: string,
+  owners: Owners,
+): string[] {
   const refs = seeRefs(name, doc, at, fromPage, owners);
   return refs.length ? ['', '## See also', ...refs.map((r) => item(r))] : [];
 }
@@ -181,8 +240,14 @@ export function seeAlso(name: string, doc: Doc, at: Node, fromPage: string, owne
  *   - `close(result?: R): void` — Closes the dialog.
  *     - **see**: [FxDialogService](FxDialogService.md)
  */
-export const seeItems = (name: string, doc: Doc, at: Node, fromPage: string, owners: Owners, quiet = false) =>
-  seeRefs(name, doc, at, fromPage, owners, quiet).map((r) => item(`**see**: ${r}`, '  '));
+export const seeItems = (
+  name: string,
+  doc: Doc,
+  at: Node,
+  fromPage: string,
+  owners: Owners,
+  quiet = false,
+) => seeRefs(name, doc, at, fromPage, owners, quiet).map((r) => item(`**see**: ${r}`, '  '));
 
 // =============================================================================
 // Index — one section per entry point, then one sub-section per kind

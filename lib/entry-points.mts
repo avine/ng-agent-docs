@@ -18,12 +18,20 @@ const SKIP_DIRS = new Set(['node_modules']);
  * Every folder under `dir` with an ng-packagr configuration, the library root included: an ng-package.json,
  * or a package.json with an `ngPackage` field.
  */
-function findNgPackages(dir: string, skipPaths: Set<string | undefined>): { dir: string; file: string; config: NgPackage }[] {
+function findNgPackages(
+  dir: string,
+  skipPaths: Set<string | undefined>,
+): { dir: string; file: string; config: NgPackage }[] {
   const own = readNgPackage(dir);
   const found = own ? [{ dir, ...own }] : [];
   for (const d of readdirSync(dir, { withFileTypes: true })) {
     const child = join(dir, d.name);
-    if (d.isDirectory() && !d.name.startsWith('.') && !SKIP_DIRS.has(d.name) && !skipPaths.has(child)) {
+    if (
+      d.isDirectory() &&
+      !d.name.startsWith('.') &&
+      !SKIP_DIRS.has(d.name) &&
+      !skipPaths.has(child)
+    ) {
       found.push(...findNgPackages(child, skipPaths));
     }
   }
@@ -43,7 +51,12 @@ export function entryDescription(source: string): string | undefined {
     if (!block || !/@packageDocumentation\b/.test(block)) continue;
     const text = toLf(block)
       .split('\n')
-      .map((l) => l.replace(/^\s*\*\s?/, '').replace(/@packageDocumentation\b/, '').trim())
+      .map((l) =>
+        l
+          .replace(/^\s*\*\s?/, '')
+          .replace(/@packageDocumentation\b/, '')
+          .trim(),
+      )
       .filter(Boolean)
       .join('\n');
     return text || undefined;
@@ -54,15 +67,27 @@ export function entryDescription(source: string): string | undefined {
 /** Turns each ng-packagr configuration into an EntryPoint. Folders whose entry file is missing are reported and skipped. */
 export function discoverEntryPoints({ libRoot, pkg, destDir, outDir }: Config): EntryPoint[] {
   const entryPoints: EntryPoint[] = [];
-  for (const { dir, file: ngPackage, config } of findNgPackages(libRoot, new Set([destDir, outDir]))) {
+  for (const { dir, file: ngPackage, config } of findNgPackages(
+    libRoot,
+    new Set([destDir, outDir]),
+  )) {
     const file = resolve(dir, config.lib?.entryFile ?? DEFAULT_ENTRY_FILE);
     const slug = toPosix(relative(libRoot, dir));
     if (!existsSync(file)) {
-      warn(`${slug || '(primary)'}: entry file not found (${toPosix(relative(libRoot, file))})`, ngPackage);
+      warn(
+        `${slug || '(primary)'}: entry file not found (${toPosix(relative(libRoot, file))})`,
+        ngPackage,
+      );
       continue;
     }
     const importPath = slug ? `${pkg.name}/${slug}` : pkg.name;
-    entryPoints.push({ importPath, slug, dir, file, description: entryDescription(readFileSync(file, 'utf8')) });
+    entryPoints.push({
+      importPath,
+      slug,
+      dir,
+      file,
+      description: entryDescription(readFileSync(file, 'utf8')),
+    });
   }
   return entryPoints.sort((a, b) => byName(a.importPath, b.importPath));
 }

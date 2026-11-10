@@ -17,7 +17,11 @@ export interface HostDirective {
 
 /** Class a `hostDirectives` entry refers to: `FxTooltip`, or `directive: FxTooltip` in the object form. */
 const classOf = (expr: Node) =>
-  expr.getType().getSymbol()?.getDeclarations().find((d): d is ClassDeclaration => Node.isClassDeclaration(d));
+  expr
+    .getType()
+    .getSymbol()
+    ?.getDeclarations()
+    .find((d): d is ClassDeclaration => Node.isClassDeclaration(d));
 
 /**
  * Bindings a class gets from its `hostDirectives`, and the list of those directives.
@@ -59,19 +63,36 @@ function hostDirectiveBindings(
       warn(`${cls.getName()}: host directive \`${name}\` not resolved, not documented`, el);
       continue;
     }
-    const pkg = decl.getSourceFile().isInNodeModules() ? packageOf(decl.getSourceFile().getFilePath()) : undefined;
-    const own = pkg ? externalBindings(decl) : chain.has(decl) ? undefined : fullBindings(decl, chain);
+    const pkg = decl.getSourceFile().isInNodeModules()
+      ? packageOf(decl.getSourceFile().getFilePath())
+      : undefined;
+    const own = pkg
+      ? externalBindings(decl)
+      : chain.has(decl)
+        ? undefined
+        : fullBindings(decl, chain);
     if (!own) {
-      warn(`${cls.getName()}: bindings of host directive ${name}${pkg ? ` (${pkg})` : ''} could not be read`, el);
+      warn(
+        `${cls.getName()}: bindings of host directive ${name}${pkg ? ` (${pkg})` : ''} could not be read`,
+        el,
+      );
       directives.push({ name, decl, pkg, exposed: [] });
       continue;
     }
     const inputs = mappings(Node.isObjectLiteralExpression(el) ? propOf(el, 'inputs') : undefined);
-    const outputs = mappings(Node.isObjectLiteralExpression(el) ? propOf(el, 'outputs') : undefined);
+    const outputs = mappings(
+      Node.isObjectLiteralExpression(el) ? propOf(el, 'outputs') : undefined,
+    );
     const exposed: HostDirective['exposed'] = [];
     // Exposed on the host: renamed, marked with its directive. Its origin on the directive side no longer matters.
     const expose = (m: Member, alias: string, list: Member[], binding: BindingKind) => {
-      list.push({ ...m, name: alias, prop: `${name}.${m.prop}`, inheritedFrom: undefined, fromHostDirective: decl });
+      list.push({
+        ...m,
+        name: alias,
+        prop: `${name}.${m.prop}`,
+        inheritedFrom: undefined,
+        fromHostDirective: decl,
+      });
       exposed.push({ binding, name: alias });
     };
     const twoWay = new Set<string>(); // `xChange` outputs already exposed as the second half of a model
@@ -83,8 +104,13 @@ function hostDirectiveBindings(
       else if (model && change?.[1] === `${alias}Change`) {
         expose(model, alias, bindings.models, 'model');
         twoWay.add(change[0]);
-      } else if (model) expose(model, alias, bindings.inputs, 'input'); // without its matching output: a plain input
-      else warn(`${cls.getName()}: host directive ${name} has no input \`${publicName}\` to expose`, el);
+      } else if (model)
+        expose(model, alias, bindings.inputs, 'input'); // without its matching output: a plain input
+      else
+        warn(
+          `${cls.getName()}: host directive ${name} has no input \`${publicName}\` to expose`,
+          el,
+        );
     }
     for (const [publicName, alias] of outputs) {
       if (twoWay.has(publicName)) continue;
@@ -92,8 +118,24 @@ function hostDirectiveBindings(
       const model = own.models.find((m) => `${m.name}Change` === publicName);
       if (output) expose(output, alias, bindings.outputs, 'output');
       // The `xChange` half of a model alone: an output, so no default, required flag or transform.
-      else if (model) expose({ ...model, default: undefined, required: false, transform: undefined, accepts: undefined }, alias, bindings.outputs, 'output');
-      else warn(`${cls.getName()}: host directive ${name} has no output \`${publicName}\` to expose`, el);
+      else if (model)
+        expose(
+          {
+            ...model,
+            default: undefined,
+            required: false,
+            transform: undefined,
+            accepts: undefined,
+          },
+          alias,
+          bindings.outputs,
+          'output',
+        );
+      else
+        warn(
+          `${cls.getName()}: host directive ${name} has no output \`${publicName}\` to expose`,
+          el,
+        );
     }
     directives.push({ name, decl, pkg, exposed });
   }
@@ -103,7 +145,11 @@ function hostDirectiveBindings(
 /** Base classes of `cls` in the library's sources, the farthest first. */
 function sourceBases(cls: ClassDeclaration): ClassDeclaration[] {
   const bases: ClassDeclaration[] = [];
-  for (let b = cls.getBaseClass(); b && !b.getSourceFile().isInNodeModules() && !bases.includes(b) && b !== cls; b = b.getBaseClass()) {
+  for (
+    let b = cls.getBaseClass();
+    b && !b.getSourceFile().isInNodeModules() && !bases.includes(b) && b !== cls;
+    b = b.getBaseClass()
+  ) {
     bases.unshift(b);
   }
   return bases;
@@ -115,15 +161,24 @@ function sourceBases(cls: ClassDeclaration): ClassDeclaration[] {
  * too, before the class's own (the farthest base first). Those of a base class from another package are
  * not read.
  */
-export function fullBindings(cls: ClassDeclaration, stack = new Set<ClassDeclaration>()): Bindings & { directives: HostDirective[] } {
+export function fullBindings(
+  cls: ClassDeclaration,
+  stack = new Set<ClassDeclaration>(),
+): Bindings & { directives: HostDirective[] } {
   const own = allBindings(cls, metadata(ngDecorator(cls)));
   const result = { ...own, directives: [] as HostDirective[] };
   for (const c of [...sourceBases(cls), cls]) {
-    const host = hostDirectiveBindings(c, metadata(ngDecorator(c)), c === cls ? stack : new Set([...stack, cls]));
+    const host = hostDirectiveBindings(
+      c,
+      metadata(ngDecorator(c)),
+      c === cls ? stack : new Set([...stack, cls]),
+    );
     result.inputs = [...result.inputs, ...host.bindings.inputs];
     result.outputs = [...result.outputs, ...host.bindings.outputs];
     result.models = [...result.models, ...host.bindings.models];
-    result.directives.push(...host.directives.map((d) => ({ ...d, fromBase: c === cls ? undefined : c })));
+    result.directives.push(
+      ...host.directives.map((d) => ({ ...d, fromBase: c === cls ? undefined : c })),
+    );
   }
   return result;
 }

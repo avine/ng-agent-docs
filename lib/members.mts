@@ -18,7 +18,8 @@ import { code, firstParagraph, isPublic, isPublicStatic, packageOf, typeText } f
 // Public members of a class: own and inherited
 // =============================================================================
 // Lifecycle hooks are public but are not part of the API a consumer calls.
-export const LIFECYCLE = /^ng(OnInit|OnChanges|DoCheck|AfterContentInit|AfterContentChecked|AfterViewInit|AfterViewChecked|OnDestroy)$/;
+export const LIFECYCLE =
+  /^ng(OnInit|OnChanges|DoCheck|AfterContentInit|AfterContentChecked|AfterViewInit|AfterViewChecked|OnDestroy)$/;
 
 type Prop = PropertyDeclaration | GetAccessorDeclaration;
 
@@ -41,7 +42,9 @@ function ownMembers(c: ClassDeclaration): ClassMember[] {
   const props: Prop[] = [...c.getProperties(), ...c.getGetAccessors()];
   const methods = c.getMethods().filter((m) => !LIFECYCLE.test(m.getName()));
   // `readonly` alone also makes a public parameter property.
-  const params = (c.getConstructors()[0]?.getParameters() ?? []).filter((p) => p.isParameterProperty() && p.getScope() === Scope.Public);
+  const params = (c.getConstructors()[0]?.getParameters() ?? []).filter(
+    (p) => p.isParameterProperty() && p.getScope() === Scope.Public,
+  );
   return [
     ...props.filter(isPublic).map((member) => ({ member, isStatic: false })),
     ...params.map((member) => ({ member, isStatic: false })),
@@ -56,7 +59,10 @@ function ownMembers(c: ClassDeclaration): ClassMember[] {
  * from another package (returned apart: its members are documented by that package) or one that cannot
  * be resolved.
  */
-function sourceChain(cls: ClassDeclaration): { chain: ClassDeclaration[]; externalBase?: ClassDeclaration | undefined } {
+function sourceChain(cls: ClassDeclaration): {
+  chain: ClassDeclaration[];
+  externalBase?: ClassDeclaration | undefined;
+} {
   const chain = [cls];
   for (let b = cls.getBaseClass(); b && !chain.includes(b); b = b.getBaseClass()) {
     if (b.getSourceFile().isInNodeModules()) return { chain, externalBase: b };
@@ -94,17 +100,23 @@ function memberLines(
   hidden: HiddenTypes,
 ): { lines: string[]; documented: boolean } {
   const name = member.getName();
-  const see = (doc: Doc) => seeItems(`${p.name}.${name}`, doc, member, p.page, p.owners, !!base && p.owners.has(base));
+  const see = (doc: Doc) =>
+    seeItems(`${p.name}.${name}`, doc, member, p.page, p.owners, !!base && p.owners.has(base));
   const from = base ? ` · inherited from ${base.getName()}` : '';
   const prefix = isStatic ? 'static ' : '';
   // Through the class: its type arguments applied. Static members cannot use the type parameters.
-  const resolved = base && !isStatic && base.getTypeParameters().length ? cls.getType().getProperty(name)?.getTypeAtLocation(cls) : undefined;
+  const resolved =
+    base && !isStatic && base.getTypeParameters().length
+      ? cls.getType().getProperty(name)?.getTypeAtLocation(cls)
+      : undefined;
 
   if (Node.isMethodDeclaration(member)) {
     const fnDoc = readFnDoc(member);
     const d = fnDoc.description;
     hidden.scan(...overloadsOf(member));
-    const signatures = resolved ? callSignatures(`${prefix}${name}`, resolved, cls) : signature(`${prefix}${name}`, member);
+    const signatures = resolved
+      ? callSignatures(`${prefix}${name}`, resolved, cls)
+      : signature(`${prefix}${name}`, member);
     const lines = signatures.map((s) => `- ${code(s)}${from}${d ? ` — ${firstParagraph(d)}` : ''}`);
     return { lines: [...lines, ...paramItems(fnDoc), ...see(fnDoc)], documented: !!d };
   }
@@ -116,13 +128,18 @@ function memberLines(
   }
   // A getter without a setter is read-only for the consumer.
   const readonly =
-    (Node.isPropertyDeclaration(member) && member.isReadonly()) || (Node.isGetAccessorDeclaration(member) && !member.getSetAccessor());
-  const type = resolved ?? (Node.isGetAccessorDeclaration(member) ? member.getReturnType() : member.getType());
+    (Node.isPropertyDeclaration(member) && member.isReadonly()) ||
+    (Node.isGetAccessorDeclaration(member) && !member.getSetAccessor());
+  const type =
+    resolved ?? (Node.isGetAccessorDeclaration(member) ? member.getReturnType() : member.getType());
   hidden.scan(member);
   const doc = readDoc(member);
   const d = doc.description;
   const text = `${prefix}${readonly ? 'readonly ' : ''}${name}: ${typeText(type, base ? cls : member)}`;
-  return { lines: [`- ${code(text)}${from}${d ? ` — ${firstParagraph(d)}` : ''}`, ...see(doc)], documented: !!d };
+  return {
+    lines: [`- ${code(text)}${from}${d ? ` — ${firstParagraph(d)}` : ''}`, ...see(doc)],
+    documented: !!d,
+  };
 }
 
 /**
@@ -137,24 +154,42 @@ export function memberSections(p: PageRef, cls: ClassDeclaration, hidden: Hidden
   const { name } = p;
   const heritage = cls.getExtends();
   if (heritage && !cls.getBaseClass()) {
-    warn(`${name}: base class \`${heritage.getText()}\` not resolved, its members are not documented`, heritage);
+    warn(
+      `${name}: base class \`${heritage.getText()}\` not resolved, its members are not documented`,
+      heritage,
+    );
   }
   const sections = { properties: [] as string[], methods: [] as string[], statics: [] as string[] };
   for (const m of classMembers(cls)) {
     const { lines, documented } = memberLines(p, cls, m, hidden);
     const what = `${m.isStatic ? 'static ' : ''}${Node.isMethodDeclaration(m.member) ? 'method' : 'property'}`;
     if (!documented && !(m.base && p.owners.has(m.base))) {
-      warn(`${name}.${m.member.getName()}: undocumented ${what}${m.base ? ` (declared by ${m.base.getName()})` : ''}`, m.member);
+      warn(
+        `${name}.${m.member.getName()}: undocumented ${what}${m.base ? ` (declared by ${m.base.getName()})` : ''}`,
+        m.member,
+      );
     }
-    (m.isStatic ? sections.statics : Node.isMethodDeclaration(m.member) ? sections.methods : sections.properties).push(...lines);
+    (m.isStatic
+      ? sections.statics
+      : Node.isMethodDeclaration(m.member)
+        ? sections.methods
+        : sections.properties
+    ).push(...lines);
   }
   const { externalBase } = sourceChain(cls);
   const pkg = externalBase && packageOf(externalBase.getSourceFile().getFilePath());
   return [
     ...(sections.properties.length ? ['', '## Properties', ...sections.properties] : []),
     ...(sections.methods.length ? ['', '## Methods', ...sections.methods] : []),
-    ...(sections.statics.length ? ['', `## Static members (\`${name}.member\`)`, ...sections.statics] : []),
-    ...(externalBase ? ['', `Also has the public members of ${externalBase.getName()} (\`${pkg}\`), documented by that package.`] : []),
+    ...(sections.statics.length
+      ? ['', `## Static members (\`${name}.member\`)`, ...sections.statics]
+      : []),
+    ...(externalBase
+      ? [
+          '',
+          `Also has the public members of ${externalBase.getName()} (\`${pkg}\`), documented by that package.`,
+        ]
+      : []),
   ];
 }
 
@@ -162,9 +197,15 @@ export function memberSections(p: PageRef, cls: ClassDeclaration, hidden: Hidden
  * Public methods of a component or directive that have a description, own and inherited: undocumented ones
  * are usually template handlers. Called through viewChild or exportAs.
  */
-export function documentedMethods(p: PageRef, cls: ClassDeclaration, hidden: HiddenTypes): string[] {
+export function documentedMethods(
+  p: PageRef,
+  cls: ClassDeclaration,
+  hidden: HiddenTypes,
+): string[] {
   return classMembers(cls)
-    .filter((m) => !m.isStatic && Node.isMethodDeclaration(m.member) && readFnDoc(m.member).description)
+    .filter(
+      (m) => !m.isStatic && Node.isMethodDeclaration(m.member) && readFnDoc(m.member).description,
+    )
     .flatMap((m) => memberLines(p, cls, m, hidden).lines);
 }
 
@@ -172,19 +213,30 @@ export function documentedMethods(p: PageRef, cls: ClassDeclaration, hidden: Hid
  * Constructor of a plain class, the one way to create it: `new FxRange(min: number, max?: number)`, its own
  * or the one it inherits. A constructor that is not public is noted: the consumer gets instances some other way.
  */
-export function constructorSection(p: PageRef, cls: ClassDeclaration, hidden: HiddenTypes): string[] {
+export function constructorSection(
+  p: PageRef,
+  cls: ClassDeclaration,
+  hidden: HiddenTypes,
+): string[] {
   const { name } = p;
   if (cls.isAbstract()) return [];
   const owner = sourceChain(cls).chain.find((c) => c.getConstructors().length);
   const ctor = owner?.getConstructors()[0];
   if (!owner || !ctor) return [];
   if (ctor.getScope() !== Scope.Public) {
-    return ['', '## Constructor', `${ctor.getScope()}: \`new ${name}()\` is not available, instances come from the library.`];
+    return [
+      '',
+      '## Constructor',
+      `${ctor.getScope()}: \`new ${name}()\` is not available, instances come from the library.`,
+    ];
   }
   const fnDoc = readFnDoc(ctor);
   const from = owner === cls ? '' : ` · inherited from ${owner.getName()}`;
   hidden.scan(...overloadsOf(ctor));
-  const lines = signature(name, ctor).map((s) => `- ${code(s)}${from}${fnDoc.description ? ` — ${firstParagraph(fnDoc.description)}` : ''}`);
+  const lines = signature(name, ctor).map(
+    (s) =>
+      `- ${code(s)}${from}${fnDoc.description ? ` — ${firstParagraph(fnDoc.description)}` : ''}`,
+  );
   const quiet = owner !== cls && p.owners.has(owner);
   const see = seeItems(`${name} constructor`, fnDoc, ctor, p.page, p.owners, quiet);
   return ['', '## Constructor', ...lines, ...paramItems(fnDoc), ...see];

@@ -46,7 +46,7 @@ maps every module in [lib/](lib/). The pipeline:
 2. **Assign owners** — every exported declaration (via `getExportedDeclarations()`, which follows
    `export *`) gets exactly one owner entry point (deepest one containing its file) and one page name.
    Pages differing only by case get `-2`, `-3` suffixes. The `Owners` map is computed for all symbols
-   *before* any page is described, so pages can link to each other and detect "hidden types".
+   _before_ any page is described, so pages can link to each other and detect "hidden types".
 3. **Describe** — `describe.mts` turns one declaration into an `Entry` (kind + Markdown), using
    `jsdoc.mts` (custom tags), `signatures.mts`, `bindings.mts` (decorator and signal inputs/outputs/models,
    including inherited), `host-directives.mts`, `members.mts`, `hidden-types.mts` (library types shown on a

@@ -45,7 +45,9 @@ export function readFnDoc(fn: Overloadable): Doc {
 // have overloads; arrow functions and function expressions have one signature.
 export function overloadsOf(fn: FunctionLike): FunctionLike[] {
   const declared =
-    Node.isMethodDeclaration(fn) || Node.isFunctionDeclaration(fn) || Node.isConstructorDeclaration(fn)
+    Node.isMethodDeclaration(fn) ||
+    Node.isFunctionDeclaration(fn) ||
+    Node.isConstructorDeclaration(fn)
       ? (implementationOf(fn).getOverloads() as FunctionLike[])
       : [];
   return declared.length ? declared : [fn];
@@ -61,7 +63,9 @@ const paramType = (p: ParameterDeclaration) => p.getTypeNode()?.getType() ?? p.g
 export function signature(name: string, fn: FunctionLike): string[] {
   return overloadsOf(fn).map((s) => {
     // Generic parameters, as written in the source: <T>, <T extends object = {}>
-    const generics = Node.isConstructorDeclaration(s) ? [] : s.getTypeParameters().map((t) => t.getText());
+    const generics = Node.isConstructorDeclaration(s)
+      ? []
+      : s.getTypeParameters().map((t) => t.getText());
     const typeParams = generics.length ? `<${generics.join(', ')}>` : '';
     const params = s.getParameters().map((p) => {
       const rest = p.isRestParameter();
@@ -74,7 +78,6 @@ export function signature(name: string, fn: FunctionLike): string[] {
   });
 }
 
-
 /** Call signatures of a function type, its type arguments applied: `FxCheck<number>` → `isOdd(value: number): boolean`. */
 export const callSignatures = (name: string, t: Type, at: Node) =>
   t.getCallSignatures().map((s) => {
@@ -82,13 +85,14 @@ export const callSignatures = (name: string, t: Type, at: Node) =>
     return name + checker.signatureToString(s.compilerSignature, at.compilerNode, TYPE_FORMAT);
   });
 
-
 /**
  * Function assigned to a const: `export const f = (...) => ...` or `export const f = function (...) {...}`.
  * Looks through parentheses and `satisfies`, not `as`: consumers see the asserted type, so `f = (...) as Fn`
  * is documented as `const f: Fn`. Returns undefined for any other initializer.
  */
-export function functionInitializer(decl: VariableDeclaration): ArrowFunction | FunctionExpression | undefined {
+export function functionInitializer(
+  decl: VariableDeclaration,
+): ArrowFunction | FunctionExpression | undefined {
   let init = decl.getInitializer();
   while (init && (Node.isParenthesizedExpression(init) || Node.isSatisfiesExpression(init))) {
     init = init.getExpression();

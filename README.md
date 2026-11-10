@@ -59,17 +59,17 @@ built `package.json`.
 
 ## Options
 
-| Option | |
-|---|---|
-| `--root <dir>` | Library folder, the one containing `ng-package.json` and `package.json`. Required. |
-| `--tsconfig <file>` | Default: `<root>/tsconfig.lib.json`. |
-| `--out <dir>` | Default: `<dest>/agent-docs`, `dest` coming from `<root>/ng-package.json` (ng-packagr's default: `dist`). Without `--out`, the command stops if the library is not built yet. |
-| `--note <text>` | Line added at the top of the index, for the agent. Repeatable. |
-| `--extra-docs <dir>` | Hand-written docs, copied to `agent-docs/extra-docs/` and linked at the end of the index. The folder can have any name, and must contain an `index.md`. |
-| `--extra-docs-note <text>` | Line shown between the heading of that last section and its link. Repeatable. Needs `--extra-docs`. |
-| `--strict` | Exit code 1 when documentation is missing (warnings). |
-| `-h`, `--help` | Show the options. |
-| `-v`, `--version` | Show the version. |
+| Option                     |                                                                                                                                                                               |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--root <dir>`             | Library folder, the one containing `ng-package.json` and `package.json`. Required.                                                                                            |
+| `--tsconfig <file>`        | Default: `<root>/tsconfig.lib.json`.                                                                                                                                          |
+| `--out <dir>`              | Default: `<dest>/agent-docs`, `dest` coming from `<root>/ng-package.json` (ng-packagr's default: `dist`). Without `--out`, the command stops if the library is not built yet. |
+| `--note <text>`            | Line added at the top of the index, for the agent. Repeatable.                                                                                                                |
+| `--extra-docs <dir>`       | Hand-written docs, copied to `agent-docs/extra-docs/` and linked at the end of the index. The folder can have any name, and must contain an `index.md`.                       |
+| `--extra-docs-note <text>` | Line shown between the heading of that last section and its link. Repeatable. Needs `--extra-docs`.                                                                           |
+| `--strict`                 | Exit code 1 when documentation is missing (warnings).                                                                                                                         |
+| `-h`, `--help`             | Show the options.                                                                                                                                                             |
+| `-v`, `--version`          | Show the version.                                                                                                                                                             |
 
 The output folder is deleted and fully regenerated on every run, so removed symbols leave no stale
 page. The command refuses an `--out` that is or contains the library, or that holds files it did not
@@ -92,18 +92,18 @@ Everything comes from the library's sources:
   library, static members (`forRoot()`), and the constructor of a plain class.
 - **Usage**: JSDoc tags on the class.
 
-| Tag | Use |
-|---|---|
-| first sentence | Short description, shown in the index. |
-| `@usage` | When to use it. One tag per case. |
-| `@avoid` | When not to use it, and what to use instead. One tag per case. |
-| `@replacedBy` | Newer equivalent to prefer in new code (legacy library). |
-| `@replaces` | Older elements this one replaces, e.g. `mat-form-field`. |
-| `@example` | Code example, fenced (without a fence: an HTML template). Can contain `@if`, `@for` and `@let` blocks. |
-| `@deprecated` | Deprecation message. |
-| `@param`, `@returns` | Parameters and return value of a function, method or pipe. |
-| `@default` | Default value of an input whose default is not in the code (setter, `inputs` metadata). |
-| `@see` | Related symbol or page, listed under "See also"; on a member (method, property, constructor, input, output, model), under that member. One tag per reference. |
+| Tag                  | Use                                                                                                                                                           |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| first sentence       | Short description, shown in the index.                                                                                                                        |
+| `@usage`             | When to use it. One tag per case.                                                                                                                             |
+| `@avoid`             | When not to use it, and what to use instead. One tag per case.                                                                                                |
+| `@replacedBy`        | Newer equivalent to prefer in new code (legacy library).                                                                                                      |
+| `@replaces`          | Older elements this one replaces, e.g. `mat-form-field`.                                                                                                      |
+| `@example`           | Code example, fenced (without a fence: an HTML template). Can contain `@if`, `@for` and `@let` blocks.                                                        |
+| `@deprecated`        | Deprecation message.                                                                                                                                          |
+| `@param`, `@returns` | Parameters and return value of a function, method or pipe.                                                                                                    |
+| `@default`           | Default value of an input whose default is not in the code (setter, `inputs` metadata).                                                                       |
+| `@see`               | Related symbol or page, listed under "See also"; on a member (method, property, constructor, input, output, model), under that member. One tag per reference. |
 
 `@see FxTooltip` and `@see {@link FxTooltip}` link to the page of `FxTooltip`, from any entry point; a
 member (`{@link FxDialogRef.close}`, or `FxDialogRef#close`) links to its class's page. A reference to the
@@ -158,6 +158,7 @@ In their `CLAUDE.md` or `AGENTS.md`:
 
 ```md
 ## @acme/ui
+
 API: read node_modules/@acme/ui/agent-docs/index.md,
 then only the relevant api/.../<Symbol>.md file. Read @acme/ui's .d.ts files only if that page does not answer.
 ```

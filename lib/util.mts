@@ -17,7 +17,8 @@ import { NG_DECORATORS } from './model.mts';
 // Generic helpers
 // =============================================================================
 // Print types as the consumer sees them: keep alias names (ButtonVariant, not the union), never truncate.
-export const TYPE_FORMAT = TypeFormatFlags.UseAliasDefinedOutsideCurrentScope | TypeFormatFlags.NoTruncation;
+export const TYPE_FORMAT =
+  TypeFormatFlags.UseAliasDefinedOutsideCurrentScope | TypeFormatFlags.NoTruncation;
 export const typeText = (t: Type, at: Node) => t.getText(at, TYPE_FORMAT);
 
 // Collapse a multi-line text (a default value, a description) to one line, for a list item.
@@ -47,10 +48,12 @@ export const summary = (s = '') => {
 };
 // CRLF (sources checked out on Windows with git's autocrlf) → LF, so the output does not depend on the OS.
 export const toLf = (s: string) => s.replace(/\r\n?/g, '\n');
-export const codeBlock = (lang: string, s: string) => '```' + lang + '\n' + toLf(s.trim()) + '\n```';
+export const codeBlock = (lang: string, s: string) =>
+  '```' + lang + '\n' + toLf(s.trim()) + '\n```';
 export const toPosix = (p: string) => p.split(sep).join('/');
 // `dir` itself, or anything below it. Works for a root folder too (`/` or `C:\`).
-export const isInside = (file: string, dir: string) => file === dir || file.startsWith(dir.endsWith(sep) ? dir : dir + sep);
+export const isInside = (file: string, dir: string) =>
+  file === dir || file.startsWith(dir.endsWith(sep) ? dir : dir + sep);
 
 // Sort order of the index. A fixed locale: `localeCompare()` alone follows the machine's locale,
 // so the output (and the snapshot test) could change from one machine to another.
@@ -58,7 +61,9 @@ export const byName = new Intl.Collator('en').compare;
 
 // Value of a string literal node ('x', "x" or `x`), otherwise undefined.
 export const str = (n?: Node) =>
-  n && (Node.isStringLiteral(n) || Node.isNoSubstitutionTemplateLiteral(n)) ? n.getLiteralText() : undefined;
+  n && (Node.isStringLiteral(n) || Node.isNoSubstitutionTemplateLiteral(n))
+    ? n.getLiteralText()
+    : undefined;
 
 // Initializer of property `name` in an object literal, e.g. `selector` in `{ selector: 'lx-button' }`.
 export const propOf = (obj: ObjectLiteralExpression | undefined, name: string) => {
@@ -73,16 +78,19 @@ export const metadata = (d?: Decorator) => {
 };
 
 // The Angular decorator of a class (@Component, @Directive, @Pipe, @Injectable, @Service, @NgModule), if any.
-export const ngDecorator = (cls: ClassDeclaration) => cls.getDecorators().find((d) => d.getName() in NG_DECORATORS);
+export const ngDecorator = (cls: ClassDeclaration) =>
+  cls.getDecorators().find((d) => d.getName() in NG_DECORATORS);
 
 // Public, non-static, not #private. Used to filter members of services and classes.
 export const isPublic = (m: PropertyDeclaration | MethodDeclaration | GetAccessorDeclaration) =>
   m.getScope() === Scope.Public && !m.isStatic() && !m.getName().startsWith('#');
 
 // Public and static, e.g. `static forRoot()` of an NgModule, or a factory method of a plain class.
-export const isPublicStatic = (m: PropertyDeclaration | MethodDeclaration | GetAccessorDeclaration) =>
-  m.getScope() === Scope.Public && m.isStatic() && !m.getName().startsWith('#');
+export const isPublicStatic = (
+  m: PropertyDeclaration | MethodDeclaration | GetAccessorDeclaration,
+) => m.getScope() === Scope.Public && m.isStatic() && !m.getName().startsWith('#');
 
 // Package that declares a file of node_modules: `.../node_modules/@angular/core/index.d.ts` → `@angular/core`.
 export const packageOf = (file: string) =>
-  [...toPosix(file).matchAll(/\/node_modules\/((?:@[^/]+\/)?[^/]+)\//g)].at(-1)?.[1] ?? 'another package';
+  [...toPosix(file).matchAll(/\/node_modules\/((?:@[^/]+\/)?[^/]+)\//g)].at(-1)?.[1] ??
+  'another package';

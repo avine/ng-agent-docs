@@ -26,7 +26,15 @@
 import { cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, relative, resolve } from 'node:path';
 import { getCompilerOptionsFromTsConfig, Node, Project } from 'ts-morph';
-import { checkExtraDocs, checkOutDir, type Config, fail, OS_FILES, readConfig, UsageError } from './lib/config.mts';
+import {
+  checkExtraDocs,
+  checkOutDir,
+  type Config,
+  fail,
+  OS_FILES,
+  readConfig,
+  UsageError,
+} from './lib/config.mts';
 import { describe } from './lib/describe.mts';
 import { discoverEntryPoints } from './lib/entry-points.mts';
 import { renderIndex } from './lib/markdown.mts';
@@ -36,8 +44,8 @@ import {
   type EntryPoint,
   EXTRA_DOCS_DIR,
   type Owners,
-  type Warning,
   warn,
+  type Warning,
   warnings,
 } from './lib/model.mts';
 import { byName, isInside, toPosix } from './lib/util.mts';
@@ -45,7 +53,8 @@ import { byName, isInside, toPosix } from './lib/util.mts';
 // Exit codes: 0 done, 1 warnings in --strict mode, 2 usage error, 3 unexpected error (a bug, or the file system).
 try {
   const config = readConfig(process.argv.slice(2));
-  if ('print' in config) console.log(config.print); // --help, --version
+  if ('print' in config)
+    console.log(config.print); // --help, --version
   else process.exitCode = main(config);
 } catch (e) {
   if (e instanceof UsageError) {
@@ -68,14 +77,19 @@ function main(config: Config): number {
   checkExtraDocs(config);
   const entryPoints = discoverEntryPoints(config);
   if (!entryPoints.length) {
-    fail(`No entry point found under ${libRoot}: no ng-package.json (nor package.json with "ngPackage") with an existing entry file.`);
+    fail(
+      `No entry point found under ${libRoot}: no ng-package.json (nor package.json with "ngPackage") with an existing entry file.`,
+    );
   }
   if (!existsSync(tsconfigFile)) fail(`${tsconfigFile} not found: pass --tsconfig <file>.`);
 
   // Map every import path to its entry file, so imports between entry points
   // (e.g. `@acme/ui/core` used in `forms`) resolve to the sources, not to a dist/ build.
   const tsconfig = getCompilerOptionsFromTsConfig(tsconfigFile).options;
-  const paths = { ...tsconfig.paths, ...Object.fromEntries(entryPoints.map((ep) => [ep.importPath, [ep.file]])) };
+  const paths = {
+    ...tsconfig.paths,
+    ...Object.fromEntries(entryPoints.map((ep) => [ep.importPath, [ep.file]])),
+  };
   const project = new Project({ tsConfigFilePath: tsconfigFile, compilerOptions: { paths } });
 
   // ===========================================================================
@@ -117,7 +131,8 @@ function main(config: Config): number {
     const file = resolve(decl.getSourceFile().getFilePath()); // ts-morph paths use `/`, ep.dir the OS separator
     const eps = [...new Set(exports.map((x) => x.ep))];
     const owner =
-      eps.filter((ep) => isInside(file, ep.dir)).sort((a, b) => b.dir.length - a.dir.length)[0] ?? eps[0]!; // eps is never empty
+      eps.filter((ep) => isInside(file, ep.dir)).sort((a, b) => b.dir.length - a.dir.length)[0] ??
+      eps[0]!; // eps is never empty
     const ownNames = exports.filter((x) => x.ep === owner).map((x) => x.name);
     const declName = Node.hasName(decl) ? decl.getName() : undefined;
     const name = ownNames.find((n) => n === declName) ?? ownNames[0]!;
@@ -131,7 +146,8 @@ function main(config: Config): number {
   // (`FxSize`, `fxSize`) would share one file on a case-insensitive file system (macOS, Windows), where the
   // package may be unpacked: the first in code point order keeps `<Name>.md`, the next ones get `<Name>-2.md`,
   // `-3`… (no name has a `-`).
-  const docPath = (e: { name: string; ep: EntryPoint }) => ['api', e.ep.slug, `${e.name}.md`].filter(Boolean).join('/');
+  const docPath = (e: { name: string; ep: EntryPoint }) =>
+    ['api', e.ep.slug, `${e.name}.md`].filter(Boolean).join('/');
   const pageOf = new Map<string, string>(); // docPath → page
   const sharing = new Map<string, number>(); // lowercased docPath → number of pages using it so far
   for (const path of [...new Set(owned.map(docPath))].sort()) {
@@ -141,7 +157,10 @@ function main(config: Config): number {
   }
   // Also read while pages are described: to link a host directive's page, and to know which classes have one.
   const owners: Owners = new Map<Node, { name: string; ctx: Context }>(
-    owned.map(({ decl, name, ep, alsoFrom }) => [decl, { name, ctx: { ep, alsoFrom, page: pageOf.get(docPath({ name, ep }))! } }]),
+    owned.map(({ decl, name, ep, alsoFrom }) => [
+      decl,
+      { name, ctx: { ep, alsoFrom, page: pageOf.get(docPath({ name, ep }))! } },
+    ]),
   );
 
   const byFile = new Map<string, { entry: Entry; decl: Node }[]>(); // doc file path → described declarations
@@ -165,7 +184,8 @@ function main(config: Config): number {
   const entries: Entry[] = [...byFile.values()].map((list) => {
     const main = list.find((x) => x.entry.doc.description) ?? list[0]!; // each list has at least one entry
     // Documentation completeness check (fails the run in --strict mode): one description per page is enough.
-    if (!main.entry.doc.description) warn(`${main.entry.name}: missing JSDoc description`, main.decl);
+    if (!main.entry.doc.description)
+      warn(`${main.entry.name}: missing JSDoc description`, main.decl);
     const parts = [main, ...list.filter((x) => x !== main)];
     return { ...main.entry, markdown: parts.map((x) => x.entry.markdown).join('\n\n---\n\n') };
   });
@@ -203,7 +223,9 @@ function main(config: Config): number {
   // ===========================================================================
   // Report
   // ===========================================================================
-  console.log(`agent-docs: ${entries.length} symbols from ${entryPoints.length} entry point(s) → ${outDir}`);
+  console.log(
+    `agent-docs: ${entries.length} symbols from ${entryPoints.length} entry point(s) → ${outDir}`,
+  );
   if (!warnings.length) return 0;
   // A base class is read once per subclass: its warnings would repeat.
   const unique = [...new Set(warnings.map((w) => formatWarning(w, libRoot)))];

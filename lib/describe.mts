@@ -1,20 +1,39 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, relative, resolve } from 'node:path';
-import {
-  type ClassDeclaration,
-  Node,
-  type ObjectLiteralExpression,
-  type Type,
-} from 'ts-morph';
+import { type ClassDeclaration, Node, type ObjectLiteralExpression, type Type } from 'ts-morph';
 import { HiddenTypes } from './hidden-types.mts';
 import { fullBindings } from './host-directives.mts';
 import { readDoc } from './jsdoc.mts';
-import { constructorSection, documentedMethods, memberSections, type PageRef } from './members.mts';
-import { classLink, examples, header, hostDirectiveLine, memberList, paramSection, seeAlso, seeItems } from './markdown.mts';
-import { type Context, type Doc, type Entry, type Kind, type Library, type Member, NG_DECORATORS, type Owners, warn } from './model.mts';
-import { callSignatures, functionInitializer, overloadsOf, readFnDoc, signature } from './signatures.mts';
 import {
-  code,
+  classLink,
+  examples,
+  header,
+  hostDirectiveLine,
+  memberList,
+  paramSection,
+  seeAlso,
+  seeItems,
+} from './markdown.mts';
+import { constructorSection, documentedMethods, memberSections, type PageRef } from './members.mts';
+import {
+  type Context,
+  type Doc,
+  type Entry,
+  type Kind,
+  type Library,
+  type Member,
+  NG_DECORATORS,
+  type Owners,
+  warn,
+} from './model.mts';
+import {
+  callSignatures,
+  functionInitializer,
+  overloadsOf,
+  readFnDoc,
+  signature,
+} from './signatures.mts';
+import {
   codeBlock,
   metadata,
   ngDecorator,
@@ -35,10 +54,12 @@ import {
  */
 export function slotsOf(template: string): string[] {
   const html = template.replace(/<!--[\s\S]*?-->/g, ''); // a commented-out <ng-content> is not a slot
-  const found = [...html.matchAll(/<ng-content(?=[\s/>])((?:[^>"']|"[^"]*"|'[^']*')*)>/g)].map((m) => {
-    const select = /(?:^|\s)select\s*=\s*(?:"([^"]*)"|'([^']*)')/.exec(m[1] ?? '');
-    return select?.[1] ?? select?.[2] ?? 'default';
-  });
+  const found = [...html.matchAll(/<ng-content(?=[\s/>])((?:[^>"']|"[^"]*"|'[^']*')*)>/g)].map(
+    (m) => {
+      const select = /(?:^|\s)select\s*=\s*(?:"([^"]*)"|'([^']*)')/.exec(m[1] ?? '');
+      return select?.[1] ?? select?.[2] ?? 'default';
+    },
+  );
   // "default" first, the named slots keep their template order (sort is stable)
   return [...new Set(found)].sort((a, b) => Number(b === 'default') - Number(a === 'default'));
 }
@@ -56,7 +77,13 @@ function templateText(template: Node | undefined): string | undefined {
     const t = e.getType();
     return t.isStringLiteral() || t.isNumberLiteral() ? String(t.getLiteralValue()) : UNKNOWN;
   };
-  return template.getHead().getLiteralText() + template.getTemplateSpans().map((s) => value(s.getExpression()) + s.getLiteral().getLiteralText()).join('');
+  return (
+    template.getHead().getLiteralText() +
+    template
+      .getTemplateSpans()
+      .map((s) => value(s.getExpression()) + s.getLiteral().getLiteralText())
+      .join('')
+  );
 }
 
 /**
@@ -71,17 +98,30 @@ function slots(name: string, cls: ClassDeclaration, meta?: ObjectLiteralExpressi
   if (html === undefined && url) {
     const file = resolve(dirname(cls.getSourceFile().getFilePath()), url);
     if (existsSync(file)) html = readFileSync(file, 'utf8');
-    else warn(`${name}: templateUrl \`${url}\` not found, its content projection slots are not documented`, urlNode);
+    else
+      warn(
+        `${name}: templateUrl \`${url}\` not found, its content projection slots are not documented`,
+        urlNode,
+      );
   }
   const found = html === undefined ? [] : slotsOf(html);
   for (const s of found.filter((x) => x.includes(UNKNOWN))) {
-    warn(`${name}: an <ng-content> select (\`${s.replaceAll(UNKNOWN, '${…}')}\`) is not a constant, that slot is not documented`, template);
+    warn(
+      `${name}: an <ng-content> select (\`${s.replaceAll(UNKNOWN, '${…}')}\`) is not a constant, that slot is not documented`,
+      template,
+    );
   }
   return found.filter((x) => !x.includes(UNKNOWN));
 }
 
 /** Classes: components, directives, pipes, services, or plain classes, based on their Angular decorator. */
-function describeClass(name: string, kind: Kind, cls: ClassDeclaration, ctx: Context, lib: Library): Entry {
+function describeClass(
+  name: string,
+  kind: Kind,
+  cls: ClassDeclaration,
+  ctx: Context,
+  lib: Library,
+): Entry {
   const { owners } = lib;
   const page: PageRef = { name, page: ctx.page, owners };
   const hidden = new HiddenTypes(lib);
@@ -110,10 +150,28 @@ function describeClass(name: string, kind: Kind, cls: ClassDeclaration, ctx: Con
       const origin = m.fromHostDirective ?? m.inheritedFrom;
       return !!origin && (owners.has(origin) || origin.getSourceFile().isInNodeModules());
     };
-    const see = (m: Member) => (m.decl ? seeItems(`${name}.${m.name}`, readDoc(m.decl), m.decl, ctx.page, owners, reportedElsewhere(m)) : []);
+    const see = (m: Member) =>
+      m.decl
+        ? seeItems(
+            `${name}.${m.name}`,
+            readDoc(m.decl),
+            m.decl,
+            ctx.page,
+            owners,
+            reportedElsewhere(m),
+          )
+        : [];
     lines.push(...memberList('Inputs', 'input', inputs, see));
     lines.push(...memberList('Outputs', 'output', outputs, see));
-    lines.push(...memberList('Two-way bindings (model)', 'model', models, see, 'Each one also works as `[name]` + `(nameChange)`.'));
+    lines.push(
+      ...memberList(
+        'Two-way bindings (model)',
+        'model',
+        models,
+        see,
+        'Each one also works as `[name]` + `(nameChange)`.',
+      ),
+    );
     if (directives.length) {
       lines.push(
         '',
@@ -125,7 +183,8 @@ function describeClass(name: string, kind: Kind, cls: ClassDeclaration, ctx: Con
     }
     if (kind === 'component') {
       const s = slots(name, cls, meta);
-      if (s.length) lines.push('', '## Content projection (ng-content)', ...s.map((x) => `- \`${x}\``));
+      if (s.length)
+        lines.push('', '## Content projection (ng-content)', ...s.map((x) => `- \`${x}\``));
     }
     // Only methods WITH a JSDoc description: undocumented public methods are usually template handlers.
     const methods = documentedMethods(page, cls, hidden);
@@ -138,7 +197,10 @@ function describeClass(name: string, kind: Kind, cls: ClassDeclaration, ctx: Con
       for (const m of list) {
         if (m.description || reportedElsewhere(m)) continue;
         const origin = m.fromHostDirective ?? m.inheritedFrom;
-        warn(`${name}.${m.name}: undocumented ${what}${origin ? ` (declared by ${origin.getName()})` : ''}`, m.decl ?? cls);
+        warn(
+          `${name}.${m.name}: undocumented ${what}${origin ? ` (declared by ${origin.getName()})` : ''}`,
+          m.decl ?? cls,
+        );
       }
     };
     undocumented(inputs.concat(models), 'input');
@@ -147,12 +209,29 @@ function describeClass(name: string, kind: Kind, cls: ClassDeclaration, ctx: Con
     // --- Pipes: template name and transform() signature
     const nameNode = propOf(meta, 'name');
     pipeName = str(nameNode);
-    if (!pipeName) warn(`${name}: pipe name is not a string literal, its template usage is not documented`, nameNode ?? cls);
-    lines.push(...header(name, kind, doc, ctx, pipeName ? [`Template usage: \`{{ value | ${pipeName} }}\``] : []));
+    if (!pipeName)
+      warn(
+        `${name}: pipe name is not a string literal, its template usage is not documented`,
+        nameNode ?? cls,
+      );
+    lines.push(
+      ...header(
+        name,
+        kind,
+        doc,
+        ctx,
+        pipeName ? [`Template usage: \`{{ value | ${pipeName} }}\``] : [],
+      ),
+    );
     const transform = cls.getMethod('transform');
     if (transform) {
       hidden.scan(...overloadsOf(transform));
-      lines.push('', '## Signature', codeBlock('ts', signature('transform', transform).join('\n')), ...paramSection(readFnDoc(transform)));
+      lines.push(
+        '',
+        '## Signature',
+        codeBlock('ts', signature('transform', transform).join('\n')),
+        ...paramSection(readFnDoc(transform)),
+      );
     }
   } else {
     // --- Services, NgModules and plain classes: public members
@@ -169,7 +248,16 @@ function describeClass(name: string, kind: Kind, cls: ClassDeclaration, ctx: Con
 
   lines.push(...examples(doc), ...seeAlso(name, doc, cls, ctx.page, owners));
   hidden.report(name, cls);
-  return { name, kind, doc, ep: ctx.ep, page: ctx.page, selector, pipeName, markdown: lines.join('\n') };
+  return {
+    name,
+    kind,
+    doc,
+    ep: ctx.ep,
+    page: ctx.page,
+    selector,
+    pipeName,
+    markdown: lines.join('\n'),
+  };
 }
 
 /**
@@ -180,38 +268,72 @@ function exportedClasses(name: string, list: Node): ClassDeclaration[] {
   const found: ClassDeclaration[] = [];
   const visit = (n: Node, depth: number): void => {
     let e = n;
-    while (Node.isSpreadElement(e) || Node.isAsExpression(e) || Node.isSatisfiesExpression(e) || Node.isParenthesizedExpression(e)) {
+    while (
+      Node.isSpreadElement(e) ||
+      Node.isAsExpression(e) ||
+      Node.isSatisfiesExpression(e) ||
+      Node.isParenthesizedExpression(e)
+    ) {
       e = e.getExpression();
     }
-    if (Node.isArrayLiteralExpression(e)) return e.getElements().forEach((x) => visit(x, depth + 1));
+    if (Node.isArrayLiteralExpression(e))
+      return e.getElements().forEach((x) => visit(x, depth + 1));
     const symbol = e.getSymbol();
     const decl = (symbol?.isAlias() ? symbol.getAliasedSymbol() : symbol)?.getDeclarations()[0];
     const init = decl && Node.isVariableDeclaration(decl) ? decl.getInitializer() : undefined;
     if (decl && Node.isClassDeclaration(decl)) found.push(decl);
     else if (init && depth < 8) visit(init, depth + 1);
-    else warn(`${name}: \`exports\` entry \`${oneLine(e.getText())}\` not resolved, not documented`, e);
+    else
+      warn(
+        `${name}: \`exports\` entry \`${oneLine(e.getText())}\` not resolved, not documented`,
+        e,
+      );
   };
   visit(list, 0);
   return found;
 }
 
 /** "Exports" section of an NgModule page: each class linked to its page, with its selector or pipe name. */
-function moduleExports(name: string, meta: ObjectLiteralExpression | undefined, ctx: Context, { root, owners }: Library): string[] {
+function moduleExports(
+  name: string,
+  meta: ObjectLiteralExpression | undefined,
+  ctx: Context,
+  { root, owners }: Library,
+): string[] {
   const list = propOf(meta, 'exports');
   const lines = (list ? exportedClasses(name, list) : []).map((c) => {
     const external = c.getSourceFile().isInNodeModules();
     const cName = c.getName() ?? '(anonymous)';
     if (!external && !owners.has(c)) {
       const file = toPosix(relative(root, resolve(c.getSourceFile().getFilePath())));
-      warn(`${name}: exports ${cName} (${file}), which has no page: export it from an entry point`, list);
+      warn(
+        `${name}: exports ${cName} (${file}), which has no page: export it from an entry point`,
+        list,
+      );
     }
     const cMeta = metadata(ngDecorator(c));
     const selector = str(propOf(cMeta, 'selector'));
     const pipe = ngDecorator(c)?.getName() === 'Pipe' ? str(propOf(cMeta, 'name')) : undefined;
-    const link = classLink({ name: cName, decl: c, pkg: external ? packageOf(c.getSourceFile().getFilePath()) : undefined }, ctx.page, owners);
+    const link = classLink(
+      {
+        name: cName,
+        decl: c,
+        pkg: external ? packageOf(c.getSourceFile().getFilePath()) : undefined,
+      },
+      ctx.page,
+      owners,
+    );
     return `- ${link}${selector ? ` \`${selector}\`` : ''}${pipe ? ` \`| ${pipe}\`` : ''}`;
   });
-  return lines.length ? ['', '## Exports', 'Usable in the templates of the components that import this module.', '', ...lines] : [];
+  return lines.length
+    ? [
+        '',
+        '## Exports',
+        'Usable in the templates of the components that import this module.',
+        '',
+        ...lines,
+      ]
+    : [];
 }
 
 /**
@@ -221,10 +343,19 @@ function moduleExports(name: string, meta: ObjectLiteralExpression | undefined, 
  */
 function kindOf(decl: Node): Kind | undefined {
   if (Node.isClassDeclaration(decl)) {
-    if (!decl.getSourceFile().isInNodeModules()) return NG_DECORATORS[ngDecorator(decl)?.getName() ?? ''] ?? 'class';
+    if (!decl.getSourceFile().isInNodeModules())
+      return NG_DECORATORS[ngDecorator(decl)?.getName() ?? ''] ?? 'class';
     const has = (p: string) => !!decl.getStaticProperty(p);
     if (has('ɵmod')) return 'module';
-    return has('ɵcmp') ? 'component' : has('ɵdir') ? 'directive' : has('ɵpipe') ? 'pipe' : has('ɵprov') ? 'service' : 'class';
+    return has('ɵcmp')
+      ? 'component'
+      : has('ɵdir')
+        ? 'directive'
+        : has('ɵpipe')
+          ? 'pipe'
+          : has('ɵprov')
+            ? 'service'
+            : 'class';
   }
   if (Node.isInterfaceDeclaration(decl)) return 'interface';
   if (Node.isTypeAliasDeclaration(decl)) return 'type';
@@ -242,8 +373,20 @@ function kindOf(decl: Node): Kind | undefined {
  */
 function describeExternal(name: string, kind: Kind, decl: Node, ctx: Context): Entry {
   const pkg = packageOf(decl.getSourceFile().getFilePath());
-  const doc: Doc = { usage: [], avoid: [], replaces: [], examples: [], params: [], see: [], description: `Re-exported from \`${pkg}\`.` };
-  const markdown = [...header(name, kind, doc, ctx), '', `See the documentation of \`${pkg}\` for its API.`].join('\n');
+  const doc: Doc = {
+    usage: [],
+    avoid: [],
+    replaces: [],
+    examples: [],
+    params: [],
+    see: [],
+    description: `Re-exported from \`${pkg}\`.`,
+  };
+  const markdown = [
+    ...header(name, kind, doc, ctx),
+    '',
+    `See the documentation of \`${pkg}\` for its API.`,
+  ].join('\n');
   return { name, kind, doc, ep: ctx.ep, page: ctx.page, markdown };
 }
 
@@ -252,10 +395,13 @@ function describeExternal(name: string, kind: Kind, decl: Node, ctx: Context): E
  * `const isOdd: FxCheck<number>` alone does not tell how to call `isOdd`.
  */
 function isHidden(t: Type, owners: Owners): boolean {
-  const decls = (t.getAliasSymbol() ?? t.getSymbol())
-    ?.getDeclarations()
-    .filter((d) => Node.isTypeAliasDeclaration(d) || Node.isInterfaceDeclaration(d)) ?? []; // not an inline type
-  return decls.length > 0 && !decls.some((d) => owners.has(d) || d.getSourceFile().isInNodeModules());
+  const decls =
+    (t.getAliasSymbol() ?? t.getSymbol())
+      ?.getDeclarations()
+      .filter((d) => Node.isTypeAliasDeclaration(d) || Node.isInterfaceDeclaration(d)) ?? []; // not an inline type
+  return (
+    decls.length > 0 && !decls.some((d) => owners.has(d) || d.getSourceFile().isInNodeModules())
+  );
 }
 
 /** Any exported declaration. Non-class symbols are shown as their source or signature in a code block. */
@@ -278,7 +424,10 @@ export function describe(name: string, decl: Node, ctx: Context, lib: Library): 
     const typed = !!decl.getTypeNode();
     // `export let` is a live binding the consumer cannot assign: shown as declared all the same.
     const keyword = decl.getVariableStatement()?.getDeclarationKind() ?? 'const';
-    body = fn && !typed ? signature(name, fn).join('\n') : `${keyword} ${name}: ${typeText(decl.getType(), decl)};`;
+    body =
+      fn && !typed
+        ? signature(name, fn).join('\n')
+        : `${keyword} ${name}: ${typeText(decl.getType(), decl)};`;
     if (fn && typed && isHidden(decl.getType(), lib.owners)) {
       // The signature shown below the hidden alias is what the agent reads: the alias is not reported.
       body += '\n' + callSignatures(name, decl.getType(), decl).join('\n');
@@ -290,8 +439,16 @@ export function describe(name: string, decl: Node, ctx: Context, lib: Library): 
   }
   hidden.report(name, decl);
 
-  const params = Node.isFunctionDeclaration(decl) || Node.isVariableDeclaration(decl) ? paramSection(doc) : [];
+  const params =
+    Node.isFunctionDeclaration(decl) || Node.isVariableDeclaration(decl) ? paramSection(doc) : [];
   const see = seeAlso(name, doc, decl, ctx.page, lib.owners);
-  const markdown = [...header(name, kind, doc, ctx), '', codeBlock('ts', body), ...params, ...examples(doc), ...see].join('\n');
+  const markdown = [
+    ...header(name, kind, doc, ctx),
+    '',
+    codeBlock('ts', body),
+    ...params,
+    ...examples(doc),
+    ...see,
+  ].join('\n');
   return { name, kind, doc, ep: ctx.ep, page: ctx.page, markdown };
 }
