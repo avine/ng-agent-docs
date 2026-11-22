@@ -1,0 +1,8 @@
+$ ng-agent-docs --root <scratch>/lib
+
+--- stdout
+
+--- stderr
+No project with the root <scratch>/lib in <scratch>/angular.json: pass --out <dir>.
+---
+exit code: 2

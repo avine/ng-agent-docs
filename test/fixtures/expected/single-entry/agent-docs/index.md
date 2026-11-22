@@ -90,4 +90,5 @@ Import each symbol from the entry point given in its section heading.
 - [negate](api/negate.md) — Negates a number.
 - [noop](api/noop.md) — Does nothing.
 - [round](api/round.md) — Rounds a number.
+- [roundTo](api/roundTo.md) — Rounds a number to a given number of decimals.
 - [toOption](api/toOption.md) — Builds an option from a value.

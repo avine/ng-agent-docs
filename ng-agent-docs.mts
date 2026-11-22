@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
  * Generates agent-docs/ from an Angular library's sources and JSDoc: its public API, split into small
- * files for AI agents. Works with a single entry point and with ng-packagr secondary entry points.
+ * files for AI agents. Works with a single entry point and with secondary entry points, built with
+ * ng-packagr or with @angular/build:library.
  *
  *   agent-docs/index.md                    → compact catalog: one line per entry point (one line per symbol
  *                                            when a single entry point has pages)
@@ -15,7 +16,9 @@
  *
  * This file is the main flow, read it top to bottom. The rest is in lib/:
  *   config.mts          command-line options, output folder checks
- *   entry-points.mts    ng-packagr entry point discovery
+ *   entry-points.mts    entry point discovery, common to all library builders, using:
+ *     ng-packagr.mts      an ng-package.json per entry point
+ *     library-builder.mts @angular/build:library (Angular 22.3+): the package.json `exports`
  *   describe.mts        one symbol → its Markdown page, using:
  *     jsdoc.mts           JSDoc description and custom tags
  *     signatures.mts      function and method signatures
@@ -28,15 +31,7 @@
 import { cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, relative, resolve } from 'node:path';
 import { getCompilerOptionsFromTsConfig, Node, Project } from 'ts-morph';
-import {
-  checkExtraDocs,
-  checkOutDir,
-  type Config,
-  fail,
-  OS_FILES,
-  readConfig,
-  UsageError,
-} from './lib/config.mts';
+import { checkExtraDocs, checkOutDir, type Config, OS_FILES, readConfig } from './lib/config.mts';
 import { describe } from './lib/describe.mts';
 import { discoverEntryPoints } from './lib/entry-points.mts';
 import { renderIndexes } from './lib/markdown.mts';
@@ -46,7 +41,9 @@ import {
   entryIndexPage,
   type EntryPoint,
   EXTRA_DOCS_DIR,
+  fail,
   type Owners,
+  UsageError,
   warn,
   type Warning,
   warnings,
@@ -81,7 +78,7 @@ function main(config: Config): number {
   const entryPoints = discoverEntryPoints(config);
   if (!entryPoints.length) {
     fail(
-      `No entry point found under ${libRoot}: no ng-package.json (nor package.json with "ngPackage") with an existing entry file.`,
+      `No entry point found under ${libRoot}: no ng-package.json (nor package.json with "ngPackage"), nor "exports" in package.json, with an existing entry file.`,
     );
   }
   if (!existsSync(tsconfigFile)) fail(`${tsconfigFile} not found: pass --tsconfig <file>.`);
@@ -130,12 +127,33 @@ function main(config: Config): number {
   // first one that exports it. The page takes the name the owner exports it under, the declaration's own
   // name if it is one of them (`export { A, A as B }` → A); its other exports are listed on the page.
   // Computed for all of them first, so a page can link to another one.
+  const deepest = (file: string, among: EntryPoint[]) =>
+    among.filter((ep) => isInside(file, ep.dir)).sort((a, b) => b.dir.length - a.dir.length)[0];
   const owned = [...exported].map(([decl, exports]) => {
     const file = resolve(decl.getSourceFile().getFilePath()); // ts-morph paths use `/`, ep.dir the OS separator
     const eps = [...new Set(exports.map((x) => x.ep))];
-    const owner =
-      eps.filter((ep) => isInside(file, ep.dir)).sort((a, b) => b.dir.length - a.dir.length)[0] ??
-      eps[0]!; // eps is never empty
+    const owner = deepest(file, eps) ?? eps[0]!; // eps is never empty
+    // An entry point exports only what lies in its folder, and what another entry point exports (by its
+    // import path, which resolves to the same declaration). A declaration of the library outside the folder
+    // of every entry point that exports it was reached from outside by a relative import: still documented,
+    // but reported. Not when an exporting entry point's folder holds it, even if a deeper entry point's folder
+    // does too: with `exports`, a secondary entry file may lie among the primary one's sources (`src/`).
+    // Not a declaration of another package: in node_modules (`booleanAttribute`), even in the library
+    // folder, or outside the library (a sibling library of the workspace, through tsconfig `paths`).
+    if (
+      isInside(file, libRoot) &&
+      !decl.getSourceFile().isInNodeModules() &&
+      !eps.some((ep) => isInside(file, ep.dir))
+    ) {
+      const home = deepest(file, entryPoints); // the primary one, unless its entry file is missing
+      const where = home
+        ? `in the folder of ${home.importPath}, which does not export it`
+        : 'outside the folder of every entry point';
+      warn(
+        `${owner.importPath}: export \`${exports.find((x) => x.ep === owner)!.name}\` is declared ${where}: move it into the folder of the entry point that exports it`,
+        decl,
+      );
+    }
     const ownNames = exports.filter((x) => x.ep === owner).map((x) => x.name);
     const declName = Node.hasName(decl) ? decl.getName() : undefined;
     const name = ownNames.find((n) => n === declName) ?? ownNames[0]!;

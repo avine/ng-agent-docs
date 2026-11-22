@@ -9,6 +9,8 @@ import { describe, test } from 'node:test';
 import { slotsOf } from '../lib/describe.mts';
 import { entryDescription } from '../lib/entry-points.mts';
 import { parseJsDoc, parseParam } from '../lib/jsdoc.mts';
+import { exportsEntryPoints } from '../lib/library-builder.mts';
+import { UsageError } from '../lib/model.mts';
 import { code, firstParagraph, summary } from '../lib/util.mts';
 
 describe('parseJsDoc', () => {
@@ -143,5 +145,79 @@ describe('entryDescription', () => {
   });
   test('none', () => {
     assert.equal(entryDescription('/** Just a comment. */\nexport {};'), undefined);
+  });
+});
+
+describe('exportsEntryPoints', () => {
+  const read = (exports: unknown) => exportsEntryPoints(exports, 'package.json');
+  const fails = (exports: unknown, message: RegExp) =>
+    assert.throws(() => read(exports), (e) => e instanceof UsageError && message.test(e.message));
+
+  test('a string is the primary entry point', () => {
+    assert.deepEqual(read('./src/public-api.ts'), [{ slug: '', target: './src/public-api.ts' }]);
+  });
+  test('subpaths, with a trailing slash or a default condition', () => {
+    assert.deepEqual(read({ '.': './index.ts', './testing/': { default: './testing/src/public-api.mts' } }), [
+      { slug: '', target: './index.ts' },
+      { slug: 'testing', target: './testing/src/public-api.mts' },
+    ]);
+  });
+  test('a nested subpath', () => {
+    assert.deepEqual(read({ '.': './index.ts', './forms/date': './forms/date/index.ts' })[1], {
+      slug: 'forms/date',
+      target: './forms/date/index.ts',
+    });
+  });
+  test('an object of conditions only (no key starting with ".") is the primary entry point', () => {
+    const primary = [{ slug: '', target: './index.ts' }];
+    assert.deepEqual(read({ types: './index.d.ts', default: './index.ts' }), primary);
+    assert.deepEqual(read({ default: './index.ts' }), primary);
+  });
+  test('an array gives its first item with a path, at any level', () => {
+    assert.deepEqual(read(['./index.ts']), [{ slug: '', target: './index.ts' }]);
+    assert.deepEqual(
+      read({ '.': [{ sass: './a.scss' }, './index.ts'], './testing': { default: ['./testing.ts'] } }),
+      [
+        { slug: '', target: './index.ts' },
+        { slug: 'testing', target: './testing.ts' },
+      ],
+    );
+  });
+  test('a "default" condition can be nested', () => {
+    assert.deepEqual(read({ '.': { default: { default: './index.ts' } } }), [
+      { slug: '', target: './index.ts' },
+    ]);
+  });
+  test('secondary subpaths that are not TypeScript sources are not entry points', () => {
+    const exports = {
+      '.': './index.ts',
+      './package.json': './package.json',
+      './theme': { sass: './theme.scss' },
+      './styles.css': './styles.css',
+      './globals': './globals.d.ts',
+    };
+    assert.deepEqual(read(exports), [{ slug: '', target: './index.ts' }]);
+  });
+  test('the primary entry point is required, and must be a TypeScript source', () => {
+    fails({ './testing': './testing/index.ts' }, /primary entry point/);
+    fails({ '.': { types: './index.d.ts' } }, /"default" condition/);
+    fails({ '.': { import: { default: './index.ts' } } }, /"default" condition/);
+    fails({ '.': './index.d.ts' }, /TypeScript file/);
+    fails(undefined, /primary entry point/);
+  });
+  test('an entry file outside the library folder', () => {
+    fails({ '.': '../shared/index.ts' }, /in the library folder/);
+    fails({ '.': './index.ts', './testing': './testing/../../up.ts' }, /in the library folder/);
+    fails({ '.': '/abs/index.ts' }, /in the library folder/);
+    assert.equal(read({ '.': './src/../index.ts' })[0]?.target, './src/../index.ts');
+  });
+  test('invalid subpaths', () => {
+    fails({ '.': './index.ts', './../up': './up.ts' }, /without "\.\."/);
+  });
+  test('entry points that differ only by case, slashes or hyphens', () => {
+    fails({ '.': './index.ts', './a': './a.ts', './a/': './b.ts' }, /same entry point as "\.\/a"/);
+    fails({ '.': './index.ts', './Forms': './a.ts', './forms': './b.ts' }, /same entry point/);
+    fails({ '.': './index.ts', './a/b': './a.ts', './a-b': './b.ts' }, /same entry point/);
+    fails({ '.': './index.ts', './': './b.ts' }, /same entry point as "\."/);
   });
 });

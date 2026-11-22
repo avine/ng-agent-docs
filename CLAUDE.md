@@ -41,11 +41,15 @@ maps every module in [lib/](lib/). The pipeline:
 
 1. **Load** — `config.mts` parses options and validates the output folder (it is `rm -rf`'d each run, so
    the command refuses an `--out` that is/contains the library or holds files without the
-   `GENERATED_MARKER`). `entry-points.mts` finds every `ng-package.json` (or `package.json` with
-   `ngPackage`). A single ts-morph `Project` is built with `paths` mapping each entry point's import path
+   `GENERATED_MARKER`). `entry-points.mts` picks the library builder's layout once (`detectLayout()`,
+   called by `config.mts`, which also needs it for the default `--out`): `ng-packagr.mts` (every
+   `ng-package.json`, or `package.json` with `ngPackage`) or `library-builder.mts` (`@angular/build:library`,
+   Angular 22.3+: the `package.json` `exports`, and `outputPath` from `angular.json`). From
+   `discoverEntryPoints()` on, nothing depends on the builder. A single ts-morph `Project` is built with `paths` mapping each entry point's import path
    to its source entry file, so cross-entry-point imports resolve to sources, not `dist/`.
 2. **Assign owners** — every exported declaration (via `getExportedDeclarations()`, which follows
    `export *`) gets exactly one owner entry point (deepest one containing its file) and one page name.
+   A declaration of the library outside the folder of every entry point that exports it is reported.
    Pages differing only by case get `-2`, `-3` suffixes; `index.md` is reserved in every folder (a symbol
    named `index` gets `index-2.md`). The `Owners` map is computed for all symbols
    _before_ any page is described, so pages can link to each other and detect "hidden types".

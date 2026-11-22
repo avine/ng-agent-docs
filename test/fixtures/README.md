@@ -7,7 +7,7 @@ one symbol, whose JSDoc says what it tests.
 |---|---|
 | `multi-entry/` | **Source of truth.** Modern layout: empty primary entry point, secondary entry points (one nested, one using ng-packagr's default `src/public_api.ts`, one configured in its `package.json`, one broken). |
 | `single-entry/` | Legacy layout: the same sources, everything exported from `src/public-api.ts`. **Generated, do not edit.** |
-| `no-entry-point/` | A library without any `ng-package.json`: the generator must exit with code 2. |
+| `no-entry-point/` | A library without any `ng-package.json` nor `exports`: the generator must exit with code 2. |
 | `guides/` | Hand-written docs for `--extra-docs`: an `index.md`, a nested page and a non-markdown file. |
 | `expected/` | Snapshot of the generator's output for each test case. **Generated, do not edit.** |
 
@@ -65,6 +65,22 @@ next to a copy of `single-entry/`, and check that the docs land there, and that 
 a library that is not built yet, or a `dest` holding another package. `dest-inside-library` puts
 `dest` inside the library, named `my-dist` (standalone ng-packagr layout), with a decoy entry point
 in it: the generator must not find it, even with `--out` and the library not built.
+
+## `@angular/build:library`
+
+There is no committed fixture for this builder: the `library-builder*` cases convert a copy of
+`multi-entry/` as Angular's `use-library-builder` migration does (no `ng-package.json` nor `ngPackage`
+left, the entry points written in the `exports` of its `package.json`). `library-builder` checks that the
+pages are the same as multi-entry's, byte for byte. The others cover the default `--out` read from an
+`angular.json` (`outputPath`, or `dist/<project>`; a project without `root` when the library is the
+workspace), its absence, and `exports` without `"."`. The other `exports` rules are unit-tested
+(`exportsEntryPoints` in `test/unit.mts`).
+`library-builder-shared-folder` writes a small library whose secondary entry file lies among the primary
+one's sources (`src/testing.ts`): only the export really declared outside its entry point's folder is
+reported.
+
+`export-from-other-library` (ng-packagr) re-exports a symbol of another workspace library, resolved by
+tsconfig `paths` to its build: documented, without the warning about a declaration outside its folder.
 
 ## Notes
 
