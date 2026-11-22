@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 import type { DeclaredEntryPoint, LibraryLayout } from './entry-points.mts';
-import { readJson } from './model.mts';
+import { fail, readJson } from './model.mts';
 import { toPosix } from './util.mts';
 
 // =============================================================================
@@ -82,6 +82,11 @@ export function ngPackagrLayout(libRoot: string): LibraryLayout {
         file: resolve(dir, config.lib?.entryFile ?? DEFAULT_ENTRY_FILE),
         declaredIn: file,
       })),
-    builtPackage: () => (own && dest ? { dir: dest, setting: `"dest" in ${own.file}` } : undefined),
+    builtPackage: () =>
+      own && dest
+        ? { dir: dest, setting: `"dest" in ${own.file}` }
+        : fail(
+            `No ng-package.json (nor "ngPackage" in package.json) in ${libRoot}: pass --out <dir>.`,
+          ),
   };
 }

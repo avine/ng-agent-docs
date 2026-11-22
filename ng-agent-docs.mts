@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
  * Generates agent-docs/ from an Angular library's sources and JSDoc: its public API, split into small
- * files for AI agents. Works with a single entry point and with ng-packagr secondary entry points.
+ * files for AI agents. Works with a single entry point and with secondary entry points, built with
+ * ng-packagr or with @angular/build:library.
  *
  *   agent-docs/index.md                    → compact catalog: one line per entry point (one line per symbol
  *                                            when a single entry point has pages)
@@ -17,6 +18,7 @@
  *   config.mts          command-line options, output folder checks
  *   entry-points.mts    entry point discovery, common to all library builders, using:
  *     ng-packagr.mts      an ng-package.json per entry point
+ *     library-builder.mts @angular/build:library (Angular 22.3+): the package.json `exports`
  *   describe.mts        one symbol → its Markdown page, using:
  *     jsdoc.mts           JSDoc description and custom tags
  *     signatures.mts      function and method signatures
@@ -76,7 +78,7 @@ function main(config: Config): number {
   const entryPoints = discoverEntryPoints(config);
   if (!entryPoints.length) {
     fail(
-      `No entry point found under ${libRoot}: no ng-package.json (nor package.json with "ngPackage") with an existing entry file.`,
+      `No entry point found under ${libRoot}: no ng-package.json (nor package.json with "ngPackage"), nor "exports" in package.json, with an existing entry file.`,
     );
   }
   if (!existsSync(tsconfigFile)) fail(`${tsconfigFile} not found: pass --tsconfig <file>.`);

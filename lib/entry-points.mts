@@ -1,8 +1,9 @@
 import { existsSync, readFileSync } from 'node:fs';
-import { relative } from 'node:path';
+import { join, relative } from 'node:path';
 import type { Config } from './config.mts';
-import { type EntryPoint, warn } from './model.mts';
-import { ngPackagrLayout } from './ng-packagr.mts';
+import { libraryBuilderLayout } from './library-builder.mts';
+import { type EntryPoint, readJson, warn } from './model.mts';
+import { ngPackagrLayout, readNgPackage } from './ng-packagr.mts';
 import { byName, toLf, toPosix } from './util.mts';
 
 // =============================================================================
@@ -25,14 +26,24 @@ export interface LibraryLayout {
   entryPoints(outDir: string): DeclaredEntryPoint[];
   /**
    * Folder of the built package, where agent-docs/ goes without --out, and the setting that gives it
-   * (for messages). Undefined when the configuration does not say. Nothing is checked.
+   * (for messages). Fails when the configuration does not say. Whether it is built is not checked here.
    */
-  builtPackage(): { dir: string; setting: string } | undefined;
+  builtPackage(): { dir: string; setting: string };
 }
 
-/** The layout of the library in `libRoot`, from its configuration files. */
+/**
+ * The layout of the library in `libRoot`, from its configuration files: ng-packagr when the library folder
+ * has an ng-packagr configuration (a library not migrated yet may also have `exports`), otherwise
+ * @angular/build:library when its package.json has `exports`. Neither: ng-packagr, which still looks for
+ * secondary entry points.
+ */
 export function detectLayout(libRoot: string): LibraryLayout {
-  return ngPackagrLayout(libRoot);
+  if (readNgPackage(libRoot)) return ngPackagrLayout(libRoot);
+  const pkgFile = join(libRoot, 'package.json');
+  const { exports } = readJson<{ exports?: unknown }>(pkgFile);
+  return exports === undefined
+    ? ngPackagrLayout(libRoot)
+    : libraryBuilderLayout(libRoot, pkgFile, exports);
 }
 
 /**

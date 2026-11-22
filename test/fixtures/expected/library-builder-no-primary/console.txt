@@ -1,0 +1,8 @@
+$ ng-agent-docs --root <scratch>/lib --out <out>
+
+--- stdout
+
+--- stderr
+<scratch>/lib/package.json: "exports" must define the primary entry point ("."), e.g. "./src/public-api.ts".
+---
+exit code: 2

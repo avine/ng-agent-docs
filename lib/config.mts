@@ -39,9 +39,10 @@ Generates agent-docs/ (index.md, one page per symbol) from an Angular library's 
 Run it after the library build: the docs go into the built package.
 
 Options:
-  --root <dir>              Library folder, with its package.json and ng-package.json. Required.
+  --root <dir>              Library folder, with its package.json. Required.
   --tsconfig <file>         Default: <root>/tsconfig.lib.json.
-  --out <dir>               Default: <dest of ng-package.json>/agent-docs. Wiped on every run.
+  --out <dir>               Default: agent-docs/ in the built package (dest of ng-package.json, or
+                            outputPath in angular.json). Wiped on every run.
   --note <text>             Line added at the top of the index. Repeatable.
   --extra-docs <dir>        Hand-written docs with an index.md, copied to agent-docs/extra-docs/.
   --extra-docs-note <text>  Line shown above the link to the extra docs. Repeatable.
@@ -103,9 +104,7 @@ export function readConfig(argv: string[]): Config | { print: string } {
     strict: args.strict,
     pkg,
     layout,
-    outDir: args.out
-      ? resolve(args.out)
-      : join(builtPackageDir(libRoot, pkg.name, layout), 'agent-docs'),
+    outDir: args.out ? resolve(args.out) : join(builtPackageDir(pkg.name, layout), 'agent-docs'),
   };
 }
 
@@ -131,10 +130,8 @@ export const OS_FILES = new Set(['.DS_Store', 'Thumbs.db', 'desktop.ini']);
  * The build empties that folder first, so the docs must be generated after it. Fails if the configuration
  * does not give the folder, if the package has not been built, or if the folder holds another package.
  */
-function builtPackageDir(libRoot: string, pkgName: string, layout: LibraryLayout): string {
-  const built =
-    layout.builtPackage() ??
-    fail(`No ng-package.json (nor "ngPackage" in package.json) in ${libRoot}: pass --out <dir>.`);
+function builtPackageDir(pkgName: string, layout: LibraryLayout): string {
+  const built = layout.builtPackage();
   const builtPkg = join(built.dir, 'package.json');
   if (!existsSync(builtPkg)) {
     fail(

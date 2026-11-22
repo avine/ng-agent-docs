@@ -9,6 +9,8 @@ import { describe, test } from 'node:test';
 import { slotsOf } from '../lib/describe.mts';
 import { entryDescription } from '../lib/entry-points.mts';
 import { parseJsDoc, parseParam } from '../lib/jsdoc.mts';
+import { exportsEntryPoints } from '../lib/library-builder.mts';
+import { UsageError } from '../lib/model.mts';
 import { code, firstParagraph, summary } from '../lib/util.mts';
 
 describe('parseJsDoc', () => {
@@ -143,5 +145,46 @@ describe('entryDescription', () => {
   });
   test('none', () => {
     assert.equal(entryDescription('/** Just a comment. */\nexport {};'), undefined);
+  });
+});
+
+describe('exportsEntryPoints', () => {
+  const read = (exports: unknown) => exportsEntryPoints(exports, 'package.json');
+  const fails = (exports: unknown, message: RegExp) =>
+    assert.throws(() => read(exports), (e) => e instanceof UsageError && message.test(e.message));
+
+  test('a string is the primary entry point', () => {
+    assert.deepEqual(read('./src/public-api.ts'), [{ slug: '', target: './src/public-api.ts' }]);
+  });
+  test('subpaths, with a trailing slash or a default condition', () => {
+    assert.deepEqual(read({ '.': './index.ts', './testing/': { default: './testing/src/public-api.mts' } }), [
+      { slug: '', target: './index.ts' },
+      { slug: 'testing', target: './testing/src/public-api.mts' },
+    ]);
+  });
+  test('a nested subpath', () => {
+    assert.deepEqual(read({ '.': './index.ts', './forms/date': './forms/date/index.ts' })[1], {
+      slug: 'forms/date',
+      target: './forms/date/index.ts',
+    });
+  });
+  test('secondary subpaths that are not TypeScript are not entry points', () => {
+    const exports = {
+      '.': './index.ts',
+      './package.json': './package.json',
+      './theme': { sass: './theme.scss' },
+      './styles.css': './styles.css',
+    };
+    assert.deepEqual(read(exports), [{ slug: '', target: './index.ts' }]);
+  });
+  test('the primary entry point is required, and must be a TypeScript file', () => {
+    fails({ './testing': './testing/index.ts' }, /primary entry point/);
+    fails({ '.': { types: './index.d.ts' } }, /"default" condition/);
+    fails({ '.': './index.d.ts' }, /TypeScript file/);
+    fails(undefined, /primary entry point/);
+  });
+  test('invalid or duplicate subpaths', () => {
+    fails({ '.': './index.ts', './../up': './up.ts' }, /without "\.\."/);
+    fails({ '.': './index.ts', './a': './a.ts', './a/': './b.ts' }, /same entry point/);
   });
 });

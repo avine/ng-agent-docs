@@ -85,6 +85,43 @@ const generatedIn = (scratch: string, dir: string) => {
   ];
 };
 
+// The multi-entry fixture as @angular/build:library builds it, in <scratch>/lib: no ng-packagr configuration
+// left, the entry points are the `exports` of its package.json (what Angular's use-library-builder migration
+// does). Same sources, so it must generate the same pages. Returns the package.json, to change `exports`.
+function libWithExports(scratch: string): string {
+  const lib = join(scratch, 'lib');
+  copyFixture('multi-entry', lib);
+  symlinkSync(nodeModules(), join(scratch, 'node_modules'), 'junction');
+  type NgPackage = { lib?: { entryFile?: string } };
+  const exports: Record<string, string> = { '.': './index.ts' };
+  for (const file of walk(lib)) {
+    const path = join(lib, file);
+    let config: NgPackage | undefined;
+    if (file.endsWith('ng-package.json')) {
+      config = JSON.parse(readFileSync(path, 'utf8')) as NgPackage;
+      rmSync(path);
+    } else if (file.endsWith('/package.json')) {
+      const { ngPackage, ...pkg } = JSON.parse(readFileSync(path, 'utf8')) as { ngPackage?: NgPackage };
+      if (!ngPackage) continue;
+      config = ngPackage;
+      writeFileSync(path, JSON.stringify(pkg, null, 2) + '\n');
+    }
+    const slug = dirname(file);
+    if (!config || slug === '.') continue;
+    exports[`./${slug}`] = `./${slug}/${config.lib?.entryFile ?? 'src/public_api.ts'}`;
+  }
+  const pkgFile = join(lib, 'package.json');
+  const pkg = JSON.parse(readFileSync(pkgFile, 'utf8')) as Record<string, unknown>;
+  writeFileSync(pkgFile, JSON.stringify({ ...pkg, exports }, null, 2) + '\n');
+  return pkgFile;
+}
+// angular.json of the workspace <scratch>, with the library <scratch>/lib as project `my-lib`.
+const angularJson = (scratch: string, project: Record<string, unknown>) =>
+  writeFileSync(join(scratch, 'angular.json'), JSON.stringify({ version: 1, projects: { 'my-lib': { root: 'lib', projectType: 'library', ...project } } }, null, 2) + '\n');
+const libraryTarget = (options: Record<string, unknown> = {}) => ({
+  build: { builder: '@angular/build:library', options: { tsConfig: 'lib/tsconfig.lib.json', ...options } },
+});
+
 // The --note lines of single-entry, also passed by the cases that must generate the same index.md.
 const NOTES = ['--note', 'Legacy library: in new code, prefer @acme/ui (marked ⚠️).', '--note', 'Second note.'];
 
@@ -290,6 +327,65 @@ const CASES: Case[] = [
     prepare: (scratch) => {
       libWithDest(scratch, 'my-dist');
       writeDecoy(join(scratch, 'lib', 'my-dist'));
+    },
+  },
+  // @angular/build:library: the entry points are the `exports` of the package.json, no ng-package.json.
+  // Same pages as multi-entry; the warning for the broken entry point points to the package.json.
+  {
+    name: 'library-builder',
+    args: ['--root', '{scratch}/lib'],
+    prepare: (scratch) => void libWithExports(scratch),
+    check: (_scratch, out) => sameOutputAs('multi-entry', out),
+  },
+  // Default --out: the `outputPath` of the library's project in angular.json (`architect`).
+  {
+    name: 'library-builder-out-default',
+    args: ['--root', '{scratch}/lib'],
+    ownOut: true,
+    prepare: (scratch) => {
+      libWithExports(scratch);
+      angularJson(scratch, { architect: libraryTarget({ outputPath: 'build/my-lib' }) });
+      built(join(scratch, 'build', 'my-lib'), '@fixtures/multi-entry');
+    },
+    check: (scratch) => generatedIn(scratch, 'build/my-lib'),
+  },
+  // Without `outputPath`, the builder's default: dist/<project name> in the workspace (here with `targets`).
+  {
+    name: 'library-builder-out-default-dist',
+    args: ['--root', '{scratch}/lib'],
+    ownOut: true,
+    prepare: (scratch) => {
+      libWithExports(scratch);
+      angularJson(scratch, { targets: libraryTarget() });
+      built(join(scratch, 'dist', 'my-lib'), '@fixtures/multi-entry');
+    },
+    check: (scratch) => generatedIn(scratch, 'dist/my-lib'),
+  },
+  // No angular.json, or none with the library as a project: the built package is unknown, --out is needed.
+  {
+    name: 'library-builder-no-angular-json',
+    args: ['--root', '{scratch}/lib'],
+    ownOut: true,
+    prepare: (scratch) => void libWithExports(scratch),
+  },
+  {
+    name: 'library-builder-no-project',
+    args: ['--root', '{scratch}/lib'],
+    ownOut: true,
+    prepare: (scratch) => {
+      libWithExports(scratch);
+      writeFileSync(join(scratch, 'angular.json'), JSON.stringify({ version: 1, projects: {} }) + '\n');
+    },
+  },
+  // `exports` without the primary entry point: refused, as the builder does, with exit code 2.
+  {
+    name: 'library-builder-no-primary',
+    args: ['--root', '{scratch}/lib'],
+    prepare: (scratch) => {
+      const pkgFile = libWithExports(scratch);
+      const pkg = JSON.parse(readFileSync(pkgFile, 'utf8')) as { exports: Record<string, string> };
+      delete pkg.exports['.'];
+      writeFileSync(pkgFile, JSON.stringify(pkg, null, 2) + '\n');
     },
   },
 ];

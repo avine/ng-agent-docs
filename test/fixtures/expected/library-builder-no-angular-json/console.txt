@@ -1,0 +1,8 @@
+$ ng-agent-docs --root <scratch>/lib
+
+--- stdout
+
+--- stderr
+No angular.json in <scratch>/lib or above, to read the library's "outputPath": pass --out <dir>.
+---
+exit code: 2
