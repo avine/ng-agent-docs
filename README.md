@@ -19,8 +19,8 @@ The agent reads the catalog, then the index of each entry point its task needs, 
 needs: a library with hundreds of symbols does not fill its context with all of them. A library with a
 single entry point has no `api/<entry>/index.md`: `index.md` lists its symbols directly.
 
-It works with a single entry point (one `public-api.ts`) and with ng-packagr secondary entry points,
-and reads both decorator bindings (`@Input()`, `@Output()`) and signal bindings (`input()`, `model()`,
+It works with a single entry point (one `public-api.ts`) and with secondary entry points, whether the
+library is built with ng-packagr or with `@angular/build:library` (Angular 22.3 and later), and reads both decorator bindings (`@Input()`, `@Output()`) and signal bindings (`input()`, `model()`,
 `output()`).
 
 ## Install
@@ -36,7 +36,7 @@ Node 22 or later.
 The docs are generated from the JSDoc, never edited, and written into the built package
 (`dist/<lib>/agent-docs/`). They always match the published code, and are never committed.
 
-Run the command **after** `ng build`: ng-packagr empties `dist/<lib>` at the start of every build.
+Run the command **after** `ng build`: the build empties `dist/<lib>` first.
 In the workspace's `package.json`:
 
 ```json
@@ -51,7 +51,8 @@ service or class, or a page that shows a type of the library that has no page (`
 with `AddOptions` exported by no entry point: the agent cannot look it up), or, with several entry
 points, one without a description (see below): `index.md` gives the agent nothing else to choose it. A
 `@see` that refers to a symbol of the library without a page, or a `{@link}` that TypeScript cannot
-resolve (not imported, or misspelled), is reported too. A component's undocumented public methods are not counted: they are template
+resolve (not imported, or misspelled), is reported too, and so is an export declared outside the folder
+of its entry point (see [Entry points](#entry-points)). A component's undocumented public methods are not counted: they are template
 handlers.
 
 Each warning starts with the file and line to fix, relative to `--root`:
@@ -60,36 +61,63 @@ Each warning starts with the file and line to fix, relative to `--root`:
   - core/functions.ts:68: toOption: shows the type FxOptionInit (core/internal.ts), which has no page: export it from an entry point
 ```
 
-There is nothing to add to `ng-package.json`: the folder is written after ng-packagr, next to the
+There is nothing to add to the build configuration: the folder is written after the build, next to the
 built `package.json`.
+
+## Entry points
+
+The command reads the library's build configuration in `--root`, whichever builder makes it:
+
+- **ng-packagr**: when `--root` has an `ng-package.json` (or a `package.json` with an `ngPackage`
+  field). Every such folder under `--root` is an entry point, with its `lib.entryFile` (default
+  `src/public_api.ts`). The built package is `dest` (default `dist`).
+- **`@angular/build:library`** (Angular 22.3 and later): otherwise, when the `package.json` has an
+  `exports` field. Every subpath pointing to a `.ts` or `.mts` file is an entry point, `"."` being the
+  primary one, as the builder reads them:
+
+  ```json
+  "exports": { ".": "./src/public-api.ts", "./testing": "./testing/src/public-api.ts" }
+  ```
+
+  The built package is the `outputPath` of the library's project in the nearest `angular.json` (the
+  project whose `root` is `--root`), or `dist/<project>` without one.
+
+A library not migrated yet to the new builder keeps working as before: ng-packagr wins when both are
+there.
+
+A symbol exported by several entry points gets one page, under the entry point whose folder holds its
+file: a secondary entry point owns the folder of its entry file (ng-packagr: of its `ng-package.json`),
+the primary one the whole library. The other entry points are listed on the page. An entry point should
+export only the files of its own folder, and what other entry points export through their import path
+(`@acme/ui/core`): a declaration reached by a relative import from outside is still documented, with a
+warning.
 
 ## Options
 
-| Option                     |                                                                                                                                                                               |
-| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `--root <dir>`             | Library folder, the one containing `ng-package.json` and `package.json`. Required.                                                                                            |
-| `--tsconfig <file>`        | Default: `<root>/tsconfig.lib.json`.                                                                                                                                          |
-| `--out <dir>`              | Default: `<dest>/agent-docs`, `dest` coming from `<root>/ng-package.json` (ng-packagr's default: `dist`). Without `--out`, the command stops if the library is not built yet. |
-| `--note <text>`            | Line added at the top of `index.md`, for the agent. Repeatable.                                                                                                               |
-| `--extra-docs <dir>`       | Hand-written docs, copied to `agent-docs/extra-docs/` and linked at the end of `index.md`. The folder can have any name, and must contain an `index.md`.                      |
-| `--extra-docs-note <text>` | Line shown between the heading of that last section and its link. Repeatable. Needs `--extra-docs`.                                                                           |
-| `--strict`                 | Exit code 1 when documentation is missing (warnings).                                                                                                                         |
-| `-h`, `--help`             | Show the options.                                                                                                                                                             |
-| `-v`, `--version`          | Show the version.                                                                                                                                                             |
+| Option                     |                                                                                                                                                          |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--root <dir>`             | Library folder, the one containing `package.json` (and `ng-package.json` with ng-packagr). Required.                                                     |
+| `--tsconfig <file>`        | Default: `<root>/tsconfig.lib.json`.                                                                                                                     |
+| `--out <dir>`              | Default: `agent-docs/` in the built package (see [Entry points](#entry-points)). Without `--out`, the command stops if the library is not built yet.     |
+| `--note <text>`            | Line added at the top of `index.md`, for the agent. Repeatable.                                                                                          |
+| `--extra-docs <dir>`       | Hand-written docs, copied to `agent-docs/extra-docs/` and linked at the end of `index.md`. The folder can have any name, and must contain an `index.md`. |
+| `--extra-docs-note <text>` | Line shown between the heading of that last section and its link. Repeatable. Needs `--extra-docs`.                                                      |
+| `--strict`                 | Exit code 1 when documentation is missing (warnings).                                                                                                    |
+| `-h`, `--help`             | Show the options.                                                                                                                                        |
+| `-v`, `--version`          | Show the version.                                                                                                                                        |
 
 The output folder is deleted and fully regenerated on every run, so removed symbols leave no stale
 page. The command refuses an `--out` that is or contains the library, or that holds files it did not
 generate.
 
 Exit codes: `0` done, `1` warnings with `--strict`, `2` usage error (options, or a missing or invalid
-`package.json` or `ng-package.json`), `3` unexpected error.
+`package.json`, `ng-package.json` or `angular.json`), `3` unexpected error.
 
 ## Document the library
 
 Everything comes from the library's sources:
 
-- **Entry points**: every `ng-package.json` under `--root` (or `package.json` with an `ngPackage` field),
-  and its `lib.entryFile`.
+- **Entry points**: from the build configuration, see [Entry points](#entry-points).
 - **Public API**: what each entry file exports. Internal code never appears.
 - **Angular metadata**: selector, inputs and outputs (decorators, signals, `inputs`/`outputs` arrays,
   inherited from base classes, exposed by `hostDirectives`, the base classes' included), `<ng-content>`
@@ -173,7 +201,7 @@ API: read node_modules/@acme/ui/agent-docs/index.md, then the index of each entr
 then only the relevant api/.../<Symbol>.md files. Read @acme/ui's .d.ts files only if that page does not answer.
 ```
 
-The `exports` field that ng-packagr writes only limits imports: agents can still read
+The `exports` field of the built package only limits imports: agents can still read
 `node_modules/<package>/agent-docs/` as plain files.
 
 ## Development
