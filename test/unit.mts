@@ -168,23 +168,56 @@ describe('exportsEntryPoints', () => {
       target: './forms/date/index.ts',
     });
   });
-  test('secondary subpaths that are not TypeScript are not entry points', () => {
+  test('an object of conditions only (no key starting with ".") is the primary entry point', () => {
+    const primary = [{ slug: '', target: './index.ts' }];
+    assert.deepEqual(read({ types: './index.d.ts', default: './index.ts' }), primary);
+    assert.deepEqual(read({ default: './index.ts' }), primary);
+  });
+  test('an array gives its first item with a path, at any level', () => {
+    assert.deepEqual(read(['./index.ts']), [{ slug: '', target: './index.ts' }]);
+    assert.deepEqual(
+      read({ '.': [{ sass: './a.scss' }, './index.ts'], './testing': { default: ['./testing.ts'] } }),
+      [
+        { slug: '', target: './index.ts' },
+        { slug: 'testing', target: './testing.ts' },
+      ],
+    );
+  });
+  test('a "default" condition can be nested', () => {
+    assert.deepEqual(read({ '.': { default: { default: './index.ts' } } }), [
+      { slug: '', target: './index.ts' },
+    ]);
+  });
+  test('secondary subpaths that are not TypeScript sources are not entry points', () => {
     const exports = {
       '.': './index.ts',
       './package.json': './package.json',
       './theme': { sass: './theme.scss' },
       './styles.css': './styles.css',
+      './globals': './globals.d.ts',
     };
     assert.deepEqual(read(exports), [{ slug: '', target: './index.ts' }]);
   });
-  test('the primary entry point is required, and must be a TypeScript file', () => {
+  test('the primary entry point is required, and must be a TypeScript source', () => {
     fails({ './testing': './testing/index.ts' }, /primary entry point/);
     fails({ '.': { types: './index.d.ts' } }, /"default" condition/);
+    fails({ '.': { import: { default: './index.ts' } } }, /"default" condition/);
     fails({ '.': './index.d.ts' }, /TypeScript file/);
     fails(undefined, /primary entry point/);
   });
-  test('invalid or duplicate subpaths', () => {
+  test('an entry file outside the library folder', () => {
+    fails({ '.': '../shared/index.ts' }, /in the library folder/);
+    fails({ '.': './index.ts', './testing': './testing/../../up.ts' }, /in the library folder/);
+    fails({ '.': '/abs/index.ts' }, /in the library folder/);
+    assert.equal(read({ '.': './src/../index.ts' })[0]?.target, './src/../index.ts');
+  });
+  test('invalid subpaths', () => {
     fails({ '.': './index.ts', './../up': './up.ts' }, /without "\.\."/);
-    fails({ '.': './index.ts', './a': './a.ts', './a/': './b.ts' }, /same entry point/);
+  });
+  test('entry points that differ only by case, slashes or hyphens', () => {
+    fails({ '.': './index.ts', './a': './a.ts', './a/': './b.ts' }, /same entry point as "\.\/a"/);
+    fails({ '.': './index.ts', './Forms': './a.ts', './forms': './b.ts' }, /same entry point/);
+    fails({ '.': './index.ts', './a/b': './a.ts', './a-b': './b.ts' }, /same entry point/);
+    fails({ '.': './index.ts', './': './b.ts' }, /same entry point as "\."/);
   });
 });

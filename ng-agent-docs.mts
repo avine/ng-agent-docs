@@ -134,14 +134,21 @@ function main(config: Config): number {
     const eps = [...new Set(exports.map((x) => x.ep))];
     const owner = deepest(file, eps) ?? eps[0]!; // eps is never empty
     // An entry point exports only what lies in its folder, and what another entry point exports (by its
-    // import path). A declaration in the folder of an entry point that does not export it (the primary one's:
-    // the whole library) was reached from outside by a relative import: still documented, but reported.
-    // Not a declaration of another package (`booleanAttribute`), even with node_modules in the library folder.
-    const home = deepest(file, entryPoints);
-    if (!decl.getSourceFile().isInNodeModules() && !(home && eps.includes(home))) {
+    // import path, which resolves to the same declaration). A declaration of the library outside the folder
+    // of every entry point that exports it was reached from outside by a relative import: still documented,
+    // but reported. Not when an exporting entry point's folder holds it, even if a deeper entry point's folder
+    // does too: with `exports`, a secondary entry file may lie among the primary one's sources (`src/`).
+    // Not a declaration of another package: in node_modules (`booleanAttribute`), even in the library
+    // folder, or outside the library (a sibling library of the workspace, through tsconfig `paths`).
+    if (
+      isInside(file, libRoot) &&
+      !decl.getSourceFile().isInNodeModules() &&
+      !eps.some((ep) => isInside(file, ep.dir))
+    ) {
+      const home = deepest(file, entryPoints); // the primary one, unless its entry file is missing
       const where = home
         ? `in the folder of ${home.importPath}, which does not export it`
-        : 'outside the library folder';
+        : 'outside the folder of every entry point';
       warn(
         `${owner.importPath}: export \`${exports.find((x) => x.ep === owner)!.name}\` is declared ${where}: move it into the folder of the entry point that exports it`,
         decl,

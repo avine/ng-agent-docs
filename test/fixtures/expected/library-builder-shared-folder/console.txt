@@ -1,0 +1,10 @@
+$ ng-agent-docs --root <scratch>/lib --out <out>
+
+--- stdout
+agent-docs: 3 symbols from 2 entry point(s) → <out>
+--- stderr
+
+1 warning(s):
+  - helpers.ts:2: @fixtures/shared-folder/testing: export `helperDelay` is declared in the folder of @fixtures/shared-folder, which does not export it: move it into the folder of the entry point that exports it
+---
+exit code: 0

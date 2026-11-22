@@ -49,7 +49,7 @@ maps every module in [lib/](lib/). The pipeline:
    to its source entry file, so cross-entry-point imports resolve to sources, not `dist/`.
 2. **Assign owners** — every exported declaration (via `getExportedDeclarations()`, which follows
    `export *`) gets exactly one owner entry point (deepest one containing its file) and one page name.
-   A declaration whose folder belongs to an entry point that does not export it is reported.
+   A declaration of the library outside the folder of every entry point that exports it is reported.
    Pages differing only by case get `-2`, `-3` suffixes; `index.md` is reserved in every folder (a symbol
    named `index` gets `index-2.md`). The `Owners` map is computed for all symbols
    _before_ any page is described, so pages can link to each other and detect "hidden types".

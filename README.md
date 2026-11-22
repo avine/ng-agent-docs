@@ -72,25 +72,31 @@ The command reads the library's build configuration in `--root`, whichever build
   field). Every such folder under `--root` is an entry point, with its `lib.entryFile` (default
   `src/public_api.ts`). The built package is `dest` (default `dist`).
 - **`@angular/build:library`** (Angular 22.3 and later): otherwise, when the `package.json` has an
-  `exports` field. Every subpath pointing to a `.ts` or `.mts` file is an entry point, `"."` being the
-  primary one, as the builder reads them:
+  `exports` field. Every subpath pointing to a `.ts` or `.mts` file (not a `.d.ts`) of the library
+  folder is an entry point, `"."` being the primary one, as the builder reads them (a value can also be
+  an array, or a `default` condition):
 
   ```json
   "exports": { ".": "./src/public-api.ts", "./testing": "./testing/src/public-api.ts" }
   ```
 
+  The command refuses the `exports` the builder refuses: no `"."`, an entry file outside the library
+  folder, or two subpaths that differ only by case, slashes or hyphens (`./a/b` and `./a-b`).
+
   The built package is the `outputPath` of the library's project in the nearest `angular.json` (the
-  project whose `root` is `--root`), or `dist/<project>` without one.
+  project whose `root` is `--root`; no `root`: the `angular.json` folder), or `dist/<project>` without one.
 
 A library not migrated yet to the new builder keeps working as before: ng-packagr wins when both are
 there.
 
 A symbol exported by several entry points gets one page, under the entry point whose folder holds its
-file: a secondary entry point owns the folder of its entry file (ng-packagr: of its `ng-package.json`),
-the primary one the whole library. The other entry points are listed on the page. An entry point should
+file: the primary entry point owns the whole library, a secondary one the folder of its `ng-package.json`
+(ng-packagr), or with `exports` the folder named after its subpath when its entry file is in it
+(`./testing` → `testing/`), otherwise the folder of its entry file. The other entry points are listed on the page. An entry point should
 export only the files of its own folder, and what other entry points export through their import path
-(`@acme/ui/core`): a declaration reached by a relative import from outside is still documented, with a
-warning.
+(`@acme/ui/core`): a declaration of the library outside the folder of every entry point that exports it,
+reached by a relative import, is still documented, with a warning. What comes from another package (a
+dependency, or another library of the workspace through tsconfig `paths`) is not reported.
 
 ## Options
 

@@ -6,3 +6,4 @@ Import each symbol from `@fixtures/multi-entry/utils`. Read only the relevant `<
 
 ## Functions, constants and classes
 - [capitalize](capitalize.md) — Capitalizes the first letter.
+- [roundTo](roundTo.md) — Rounds a number to a given number of decimals.

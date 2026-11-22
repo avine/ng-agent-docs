@@ -1,7 +1,7 @@
 $ ng-agent-docs --root <scratch>/lib
 
 --- stdout
-agent-docs: 69 symbols from 9 entry point(s) → <scratch>/build/my-lib/agent-docs
+agent-docs: 70 symbols from 9 entry point(s) → <scratch>/build/my-lib/agent-docs
 --- stderr
 
 33 warning(s):
@@ -40,7 +40,7 @@ agent-docs: 69 symbols from 9 entry point(s) → <scratch>/build/my-lib/agent-do
   - forms/index.ts: @fixtures/multi-entry/forms: entry point without a description in index.md: add a @packageDocumentation block at the top of its entry file
 ---
 exit code: 0
-build/my-lib/: 79 file(s)
+build/my-lib/: 80 file(s)
   agent-docs/index.md
   package.json
-  agent-docs/api/: 77 page(s)
+  agent-docs/api/: 78 page(s)

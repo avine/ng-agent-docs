@@ -122,6 +122,17 @@ const libraryTarget = (options: Record<string, unknown> = {}) => ({
   build: { builder: '@angular/build:library', options: { tsConfig: 'lib/tsconfig.lib.json', ...options } },
 });
 
+// Writes the files of a small library (path relative to <scratch> → content), with no Angular import:
+// it needs no node_modules.
+const writeFiles = (scratch: string, files: Record<string, unknown>) => {
+  for (const [file, content] of Object.entries(files)) {
+    const path = join(scratch, file);
+    mkdirSync(dirname(path), { recursive: true });
+    writeFileSync(path, (typeof content === 'string' ? content : JSON.stringify(content, null, 2)) + '\n');
+  }
+};
+const TSCONFIG_LIB = { compilerOptions: { strict: true, noEmit: true, module: 'es2022', moduleResolution: 'bundler' } };
+
 // The --note lines of single-entry, also passed by the cases that must generate the same index.md.
 const NOTES = ['--note', 'Legacy library: in new code, prefer @acme/ui (marked ⚠️).', '--note', 'Second note.'];
 
@@ -361,6 +372,24 @@ const CASES: Case[] = [
     },
     check: (scratch) => generatedIn(scratch, 'dist/my-lib'),
   },
+  // The library is the workspace (angular.json in --root), its project has no `root`: the builder's default,
+  // the workspace folder.
+  {
+    name: 'library-builder-workspace-root',
+    args: ['--root', '{scratch}/lib'],
+    ownOut: true,
+    prepare: (scratch) => {
+      libWithExports(scratch);
+      writeFiles(scratch, {
+        'lib/angular.json': {
+          version: 1,
+          projects: { 'my-lib': { projectType: 'library', architect: libraryTarget({ outputPath: '../dist/my-lib' }) } },
+        },
+      });
+      built(join(scratch, 'dist', 'my-lib'), '@fixtures/multi-entry');
+    },
+    check: (scratch) => generatedIn(scratch, 'dist/my-lib'),
+  },
   // No angular.json, or none with the library as a project: the built package is unknown, --out is needed.
   {
     name: 'library-builder-no-angular-json',
@@ -387,6 +416,48 @@ const CASES: Case[] = [
       delete pkg.exports['.'];
       writeFileSync(pkgFile, JSON.stringify(pkg, null, 2) + '\n');
     },
+  },
+  // A secondary entry file among the primary one's sources: its folder (src/) holds them all. A declaration
+  // there exported by the primary entry point only is not reported; one outside src/ exported by testing
+  // only (helpers.ts) is, in the folder of the primary one.
+  {
+    name: 'library-builder-shared-folder',
+    args: ['--root', '{scratch}/lib'],
+    docs: ['index.md'],
+    prepare: (scratch) =>
+      writeFiles(scratch, {
+        'lib/package.json': {
+          name: '@fixtures/shared-folder',
+          version: '1.0.0',
+          exports: { '.': './src/public-api.ts', './testing': './src/testing.ts' },
+        },
+        'lib/tsconfig.lib.json': { ...TSCONFIG_LIB, include: ['**/*.ts'] },
+        'lib/src/public-api.ts': "/** @packageDocumentation The library. */\nexport * from './button';",
+        'lib/src/button.ts': "/** Label of a button. */\nexport const buttonLabel = 'OK';",
+        'lib/src/testing.ts':
+          "/** @packageDocumentation Test helpers. */\nexport * from './harness';\nexport * from '../helpers';",
+        'lib/src/harness.ts': "/** Name of the harness. */\nexport const harnessName = 'button';",
+        'lib/helpers.ts': '/** Delay of the test helpers, in ms. */\nexport const helperDelay = 10;',
+      }),
+  },
+  // A re-export of another library of the workspace, resolved by tsconfig `paths` to its build (what
+  // `ng generate library` configures), outside node_modules: documented, not reported.
+  {
+    name: 'export-from-other-library',
+    args: ['--root', '{scratch}/lib'],
+    docs: ['index.md'],
+    prepare: (scratch) =>
+      writeFiles(scratch, {
+        'lib/package.json': { name: '@fixtures/reexport', version: '1.0.0' },
+        'lib/ng-package.json': { lib: { entryFile: 'index.ts' } },
+        'lib/tsconfig.lib.json': {
+          compilerOptions: { ...TSCONFIG_LIB.compilerOptions, paths: { '@fixtures/other': ['../dist/other'] } },
+          files: ['index.ts'],
+        },
+        'lib/index.ts': "/** @packageDocumentation The library. */\nexport { OTHER_TOKEN } from '@fixtures/other';",
+        'dist/other/package.json': { name: '@fixtures/other', version: '1.0.0', types: './index.d.ts' },
+        'dist/other/index.d.ts': '/** Token of the other library. */\nexport declare const OTHER_TOKEN: string;',
+      }),
   },
 ];
 
