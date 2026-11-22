@@ -127,12 +127,26 @@ function main(config: Config): number {
   // first one that exports it. The page takes the name the owner exports it under, the declaration's own
   // name if it is one of them (`export { A, A as B }` → A); its other exports are listed on the page.
   // Computed for all of them first, so a page can link to another one.
+  const deepest = (file: string, among: EntryPoint[]) =>
+    among.filter((ep) => isInside(file, ep.dir)).sort((a, b) => b.dir.length - a.dir.length)[0];
   const owned = [...exported].map(([decl, exports]) => {
     const file = resolve(decl.getSourceFile().getFilePath()); // ts-morph paths use `/`, ep.dir the OS separator
     const eps = [...new Set(exports.map((x) => x.ep))];
-    const owner =
-      eps.filter((ep) => isInside(file, ep.dir)).sort((a, b) => b.dir.length - a.dir.length)[0] ??
-      eps[0]!; // eps is never empty
+    const owner = deepest(file, eps) ?? eps[0]!; // eps is never empty
+    // An entry point exports only what lies in its folder, and what another entry point exports (by its
+    // import path). A declaration in the folder of an entry point that does not export it (the primary one's:
+    // the whole library) was reached from outside by a relative import: still documented, but reported.
+    // Not a declaration of another package (`booleanAttribute`), even with node_modules in the library folder.
+    const home = deepest(file, entryPoints);
+    if (!decl.getSourceFile().isInNodeModules() && !(home && eps.includes(home))) {
+      const where = home
+        ? `in the folder of ${home.importPath}, which does not export it`
+        : 'outside the library folder';
+      warn(
+        `${owner.importPath}: export \`${exports.find((x) => x.ep === owner)!.name}\` is declared ${where}: move it into the folder of the entry point that exports it`,
+        decl,
+      );
+    }
     const ownNames = exports.filter((x) => x.ep === owner).map((x) => x.name);
     const declName = Node.hasName(decl) ? decl.getName() : undefined;
     const name = ownNames.find((n) => n === declName) ?? ownNames[0]!;

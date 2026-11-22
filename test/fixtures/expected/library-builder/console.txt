@@ -4,10 +4,11 @@ $ ng-agent-docs --root <scratch>/lib --out <out>
 agent-docs: 69 symbols from 9 entry point(s) → <out>
 --- stderr
 
-32 warning(s):
+33 warning(s):
   - package.json: broken: entry file not found (broken/index.ts)
   - utils/src/public_api.ts: @fixtures/multi-entry/utils: default export not documented, export it by name
   - utils/src/public_api.ts: @fixtures/multi-entry/utils: export `missingHelper` could not be resolved, not documented
+  - shared/strings.ts:4: @fixtures/multi-entry/utils: export `capitalize` is declared in the folder of @fixtures/multi-entry, which does not export it: move it into the folder of the entry point that exports it
   - button/button.ts:85: FxButton.iconPosition: undocumented input
   - button/button.ts:121: FxButton.toggled: undocumented output
   - button/button.module.ts:26: FxButtonModule: exports FxButtonRipple (button/button.module.ts), which has no page: export it from an entry point
