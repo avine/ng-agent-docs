@@ -1,28 +1,13 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
-import { EXTRA_DOCS_DIR, GENERATED_MARKER } from './model.mts';
+import { detectLayout, type LibraryLayout } from './entry-points.mts';
+import { EXTRA_DOCS_DIR, fail, GENERATED_MARKER, readJson } from './model.mts';
 import { isInside, toPosix } from './util.mts';
 
 // =============================================================================
 // Config — from the command line (see README.md for the options)
 // =============================================================================
-/** A wrong command line or library layout: exit code 2, so it is never mistaken for incomplete docs (1). */
-export class UsageError extends Error {}
-
-export function fail(message: string): never {
-  throw new UsageError(message);
-}
-
-/** Reads a JSON file of the library, failing with its path when it is not valid JSON. */
-export function readJson<T>(file: string): T {
-  try {
-    return JSON.parse(readFileSync(file, 'utf8')) as T;
-  } catch (e) {
-    return fail(`${file}: not valid JSON (${(e as Error).message}).`);
-  }
-}
-
 /**
  * The validated command line, built by readConfig(): every path is absolute, every default applied.
  * Checks that depend on the folders' content (checkOutDir, checkExtraDocs) are run separately by main().
@@ -42,9 +27,9 @@ export interface Config {
   strict: boolean;
   /** From the library's package.json. `name` is the import path of the primary entry point, and the prefix of the others. */
   pkg: { name: string; version?: string | undefined };
-  /** `dest` of the library's ng-packagr configuration. Read even with --out: never scanned for entry points. */
-  destDir?: string | undefined;
-  /** --out, default <destDir>/agent-docs. ⚠️ Wiped on every run: see checkOutDir(). */
+  /** Where the library's builder declares the entry points and the built package. */
+  layout: LibraryLayout;
+  /** --out, default <built package>/agent-docs. ⚠️ Wiped on every run: see checkOutDir(). */
   outDir: string;
 }
 
@@ -108,7 +93,7 @@ export function readConfig(argv: string[]): Config | { print: string } {
   if (args['extra-docs-note'].length && !extraDocs)
     fail('--extra-docs-note needs --extra-docs <folder>.');
   const pkg = readPackage(libRoot);
-  const destDir = ngPackageDest(libRoot);
+  const layout = detectLayout(libRoot);
   return {
     libRoot,
     tsconfig: resolve(args.tsconfig ?? join(libRoot, 'tsconfig.lib.json')),
@@ -117,10 +102,10 @@ export function readConfig(argv: string[]): Config | { print: string } {
     extraDocsNotes: args['extra-docs-note'],
     strict: args.strict,
     pkg,
-    destDir,
+    layout,
     outDir: args.out
       ? resolve(args.out)
-      : join(builtPackageDir(libRoot, pkg.name, destDir), 'agent-docs'),
+      : join(builtPackageDir(libRoot, pkg.name, layout), 'agent-docs'),
   };
 }
 
@@ -140,55 +125,17 @@ export const OS_FILES = new Set(['.DS_Store', 'Thumbs.db', 'desktop.ini']);
 // =============================================================================
 // Default output folder: inside the built package
 // =============================================================================
-/** The ng-packagr options read here. */
-export interface NgPackage {
-  lib?: { entryFile?: string };
-  dest?: string;
-}
-
 /**
- * ng-packagr configuration of a folder, as ng-packagr looks for it: its ng-package.json, otherwise the
- * `ngPackage` field of its package.json. Undefined when the folder has neither: it is not an entry point.
- * `file` is where the configuration was read, for messages.
- */
-export function readNgPackage(dir: string): { file: string; config: NgPackage } | undefined {
-  const ngPackage = join(dir, 'ng-package.json');
-  if (existsSync(ngPackage)) return { file: ngPackage, config: readJson<NgPackage>(ngPackage) };
-  const pkgFile = join(dir, 'package.json');
-  if (!existsSync(pkgFile)) return undefined;
-  let pkg: { ngPackage?: unknown };
-  try {
-    pkg = JSON.parse(readFileSync(pkgFile, 'utf8')) as { ngPackage?: unknown };
-  } catch {
-    return undefined; // a package.json of something else (a test fixture, a tool): not ours to judge
-  }
-  const config = pkg.ngPackage;
-  return config && typeof config === 'object'
-    ? { file: pkgFile, config: config as NgPackage }
-    : undefined;
-}
-
-/**
- * Folder of the built package: the `dest` of the library's ng-packagr configuration, relative to the
- * library folder (ng-packagr's default: `dist`). Undefined without such a configuration. Nothing is
- * checked: with --out, the library does not have to be built.
- */
-function ngPackageDest(libRoot: string): string | undefined {
-  const ngPackage = readNgPackage(libRoot);
-  return ngPackage && resolve(libRoot, ngPackage.config.dest ?? 'dist');
-}
-
-/**
- * destDir, where agent-docs/ goes when --out is not given.
+ * The built package, where agent-docs/ goes when --out is not given.
  *
- * ng-packagr empties `dest` at the start of every build, so the docs must be generated after it.
- * Fails if there is no ng-package.json, if the package has not been built, or if `dest` holds another package.
+ * The build empties that folder first, so the docs must be generated after it. Fails if the configuration
+ * does not give the folder, if the package has not been built, or if the folder holds another package.
  */
-function builtPackageDir(libRoot: string, pkgName: string, destDir: string | undefined): string {
-  const dest =
-    destDir ??
+function builtPackageDir(libRoot: string, pkgName: string, layout: LibraryLayout): string {
+  const built =
+    layout.builtPackage() ??
     fail(`No ng-package.json (nor "ngPackage" in package.json) in ${libRoot}: pass --out <dir>.`);
-  const builtPkg = join(dest, 'package.json');
+  const builtPkg = join(built.dir, 'package.json');
   if (!existsSync(builtPkg)) {
     fail(
       `${builtPkg} not found: build the library first (ng build), agent-docs/ goes into the built package.`,
@@ -196,10 +143,8 @@ function builtPackageDir(libRoot: string, pkgName: string, destDir: string | und
   }
   const { name } = readJson<{ name?: string }>(builtPkg);
   if (name !== pkgName)
-    fail(
-      `${builtPkg} is the package ${name}, not ${pkgName}: check "dest" in ${readNgPackage(libRoot)?.file}.`,
-    );
-  return dest;
+    fail(`${builtPkg} is the package ${name}, not ${pkgName}: check ${built.setting}.`);
+  return built.dir;
 }
 
 // =============================================================================

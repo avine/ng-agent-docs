@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import type { ClassDeclaration, Node } from 'ts-morph';
 
 // =============================================================================
@@ -19,11 +20,11 @@ export type Kind =
 /** Kind of template binding: `[name]`, `[(name)]` or `(name)`. */
 export type BindingKind = 'input' | 'model' | 'output';
 
-/** One ng-packagr entry point: what consumers import, and the file that defines its public API. */
+/** One entry point: what consumers import, and the file that defines its public API. */
 export interface EntryPoint {
   importPath: string; // '@acme/ui' (primary) or '@acme/ui/forms' (secondary)
-  slug: string; // folder relative to the library root: '' (primary) or 'forms'
-  dir: string;
+  slug: string; // import path without the package name: '' (primary) or 'forms'
+  dir: string; // folder of its sources: a declaration in it belongs to this entry point (the deepest one)
   file: string; // absolute path of the entry file
   description?: string | undefined; // from @packageDocumentation
 }
@@ -143,4 +144,20 @@ export function warn(message: string, at?: Node | string): void {
       file: at?.getSourceFile().getFilePath(),
       line: at?.getStartLineNumber(),
     });
+}
+
+/** A wrong command line or library layout: exit code 2, so it is never mistaken for incomplete docs (1). */
+export class UsageError extends Error {}
+
+export function fail(message: string): never {
+  throw new UsageError(message);
+}
+
+/** Reads a JSON file of the library, failing with its path when it is not valid JSON. */
+export function readJson<T>(file: string): T {
+  try {
+    return JSON.parse(readFileSync(file, 'utf8')) as T;
+  } catch (e) {
+    return fail(`${file}: not valid JSON (${(e as Error).message}).`);
+  }
 }

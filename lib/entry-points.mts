@@ -1,41 +1,38 @@
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
-import { join, relative, resolve } from 'node:path';
-import { type Config, type NgPackage, readNgPackage } from './config.mts';
+import { existsSync, readFileSync } from 'node:fs';
+import { relative } from 'node:path';
+import type { Config } from './config.mts';
 import { type EntryPoint, warn } from './model.mts';
+import { ngPackagrLayout } from './ng-packagr.mts';
 import { byName, toLf, toPosix } from './util.mts';
 
 // =============================================================================
-// Entry point discovery (ng-packagr)
+// Entry point discovery
 // =============================================================================
-// ng-packagr's default when the configuration has no `lib.entryFile`.
-const DEFAULT_ENTRY_FILE = 'src/public_api.ts';
-// Folders never scanned for entry points. Absent from a library made by `ng generate library`,
-// but --root may be the repository itself (standalone ng-packagr). Skipped by name: node_modules.
-// By path: destDir and outDir, as an entry point may have the same folder name.
-const SKIP_DIRS = new Set(['node_modules']);
+// Where the entry points are declared depends on the library builder. Each builder has a LibraryLayout,
+// chosen once by detectLayout(); from discoverEntryPoints() on, the run does not depend on the builder.
 
-/**
- * Every folder under `dir` with an ng-packagr configuration, the library root included: an ng-package.json,
- * or a package.json with an `ngPackage` field.
- */
-function findNgPackages(
-  dir: string,
-  skipPaths: Set<string | undefined>,
-): { dir: string; file: string; config: NgPackage }[] {
-  const own = readNgPackage(dir);
-  const found = own ? [{ dir, ...own }] : [];
-  for (const d of readdirSync(dir, { withFileTypes: true })) {
-    const child = join(dir, d.name);
-    if (
-      d.isDirectory() &&
-      !d.name.startsWith('.') &&
-      !SKIP_DIRS.has(d.name) &&
-      !skipPaths.has(child)
-    ) {
-      found.push(...findNgPackages(child, skipPaths));
-    }
-  }
-  return found;
+/** An entry point as the builder's configuration declares it, before the checks common to all builders. */
+export interface DeclaredEntryPoint {
+  slug: string; // import path without the package name: '' (primary) or 'forms'
+  dir: string; // folder of its sources: see EntryPoint.dir
+  file: string; // absolute path of the entry file, which may not exist
+  declaredIn: string; // the configuration file that declares it, for messages
+}
+
+/** What depends on the library builder. */
+export interface LibraryLayout {
+  /** Every entry point the configuration declares. `outDir` is never scanned for them. */
+  entryPoints(outDir: string): DeclaredEntryPoint[];
+  /**
+   * Folder of the built package, where agent-docs/ goes without --out, and the setting that gives it
+   * (for messages). Undefined when the configuration does not say. Nothing is checked.
+   */
+  builtPackage(): { dir: string; setting: string } | undefined;
+}
+
+/** The layout of the library in `libRoot`, from its configuration files. */
+export function detectLayout(libRoot: string): LibraryLayout {
+  return ngPackagrLayout(libRoot);
 }
 
 /**
@@ -65,19 +62,14 @@ export function entryDescription(source: string): string | undefined {
   return undefined;
 }
 
-/** Turns each ng-packagr configuration into an EntryPoint. Folders whose entry file is missing are reported and skipped. */
-export function discoverEntryPoints({ libRoot, pkg, destDir, outDir }: Config): EntryPoint[] {
+/** The entry points the layout declares. Those whose entry file is missing are reported and skipped. */
+export function discoverEntryPoints({ libRoot, pkg, layout, outDir }: Config): EntryPoint[] {
   const entryPoints: EntryPoint[] = [];
-  for (const { dir, file: ngPackage, config } of findNgPackages(
-    libRoot,
-    new Set([destDir, outDir]),
-  )) {
-    const file = resolve(dir, config.lib?.entryFile ?? DEFAULT_ENTRY_FILE);
-    const slug = toPosix(relative(libRoot, dir));
+  for (const { slug, dir, file, declaredIn } of layout.entryPoints(outDir)) {
     if (!existsSync(file)) {
       warn(
         `${slug || '(primary)'}: entry file not found (${toPosix(relative(libRoot, file))})`,
-        ngPackage,
+        declaredIn,
       );
       continue;
     }

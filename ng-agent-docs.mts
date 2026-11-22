@@ -15,7 +15,8 @@
  *
  * This file is the main flow, read it top to bottom. The rest is in lib/:
  *   config.mts          command-line options, output folder checks
- *   entry-points.mts    ng-packagr entry point discovery
+ *   entry-points.mts    entry point discovery, common to all library builders, using:
+ *     ng-packagr.mts      an ng-package.json per entry point
  *   describe.mts        one symbol → its Markdown page, using:
  *     jsdoc.mts           JSDoc description and custom tags
  *     signatures.mts      function and method signatures
@@ -28,15 +29,7 @@
 import { cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, relative, resolve } from 'node:path';
 import { getCompilerOptionsFromTsConfig, Node, Project } from 'ts-morph';
-import {
-  checkExtraDocs,
-  checkOutDir,
-  type Config,
-  fail,
-  OS_FILES,
-  readConfig,
-  UsageError,
-} from './lib/config.mts';
+import { checkExtraDocs, checkOutDir, type Config, OS_FILES, readConfig } from './lib/config.mts';
 import { describe } from './lib/describe.mts';
 import { discoverEntryPoints } from './lib/entry-points.mts';
 import { renderIndexes } from './lib/markdown.mts';
@@ -46,7 +39,9 @@ import {
   entryIndexPage,
   type EntryPoint,
   EXTRA_DOCS_DIR,
+  fail,
   type Owners,
+  UsageError,
   warn,
   type Warning,
   warnings,
